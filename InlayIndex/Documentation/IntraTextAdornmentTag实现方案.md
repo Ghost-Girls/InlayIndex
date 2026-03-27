@@ -2,7 +2,7 @@
 
 ## 概述
 
-Intra-text Adornments（文本内装饰器）是 Visual Studio 编辑器提供的一种在文本行内嵌入 UI 元素的技术。本方案用于在 C/C++ 数组初始化语法中，为数组索引添加可视化标签。
+Intra-text Adornments（文本内装饰器）是 Visual Studio 编辑器提供的一种在文本行内嵌入 UI 元素的技术。本方案用于在 C/C++ 数组初始化语法中，为数组索引和枚举值添加可视化标签。
 
 ---
 
@@ -13,15 +13,21 @@ Intra-text Adornments（文本内装饰器）是 Visual Studio 编辑器提供�
 ```
 Array Inline Index/
 ├── Parsers/
-│   ├── RegexArrayParser.cs          # 正则表达式解析器
-│   └── DesignatedInitializerDetector.cs  # 初始化器检测器
+│   ├── ClangAstParser.cs              # ClangSharp AST 解析器
+│   ├── ArrayInitializerParser.cs      # 数组初始化解析器
+│   └── EnumDefinitionParser.cs        # 枚举定义解析器
 ├── Tags/
-│   ├── ArrayIndexTagger.cs          # 标签生成器（核心）
-│   ├── ArrayIndexTaggerProvider.cs  # 标签提供者
-│   └── IntraTextAdornment.cs        # 装饰器 UI 控件
+│   ├── ArrayIndexTagger.cs            # 数组索引标签生成器（核心）
+│   ├── EnumValueTagger.cs             # 枚举值标签生成器
+│   ├── ArrayIndexTaggerProvider.cs    # 标签提供者
+│   └── IntraTextAdornment.cs          # 装饰器 UI 控件
+├── Models/
+│   ├── ArrayInitialization.cs         # 数组初始化数据结构
+│   ├── EnumDefinition.cs              # 枚举定义数据结构
+│   └── SourceLocation.cs              # 源代码位置映射
 ├── Utils/
-│   └── ErrorHandler.cs              # 日志工具
-└── Array_Inline_IndexPackage.cs     # VSIX 包入口
+│   └── ErrorHandler.cs                # 日志工具
+└── InlayIndexPackage.cs               # VSIX 包入口
 ```
 
 ### 数据流
@@ -29,15 +35,18 @@ Array Inline Index/
 ```
 源代码文本
     ↓
-RegexArrayParser.ParseArrayInitialization()
+ClangAstParser.Parse() - 使用 ClangSharp 解析为 AST
     ↓
-List<DesignatedInitializer> (解析结果)
+CXTranslationUnit (AST 抽象语法树)
     ↓
-DesignatedInitializerDetector.Detect()
+ArrayInitializerParser.ExtractArrayInitializations()
+EnumDefinitionParser.ExtractEnumDefinitions()
     ↓
 List<ArrayInitialization>
+List<EnumDefinition>
     ↓
 ArrayIndexTagger.GetTags()
+EnumValueTagger.GetTags()
     ↓
 List<TagSpan<IntraTextAdornmentTag>>
     ↓
@@ -48,61 +57,178 @@ Visual Studio 编辑器渲染
 
 ## 核心实现
 
-### 1. 解析器 (RegexArrayParser)
+### 1. ClangSharp AST 解析器 (ClangAstParser)
 
-**文件**: `Parsers/RegexArrayParser.cs`
+**文件**: `Parsers/ClangAstParser.cs`
 
-**功能**: 使用正则表达式解析 C/C++ 数组初始化列表
+**功能**: 使用 ClangSharp (libclang) 解析 C/C++ 代码为抽象语法树 (AST)
 
 **关键方法**:
 
 ```csharp
-public List<DesignatedInitializer> ParseArrayInitialization(string code, string fileName = "test.cpp")
+public CXTranslationUnit ParseFile(string filePath, string[] clangArgs = null)
 ```
 
 **解析流程**:
 
-1. **匹配数组定义**
+1. **初始化 Clang 索引**
    ```csharp
-   var arrayPattern = new Regex(
-       @"\b(\w+)\s+(\w+)\s*((?:\[\d+\])+)\s*=\s*(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\});",
-       RegexOptions.Multiline | RegexOptions.Compiled
+   var index = CXIndex.Create();
+   ```
+
+2. **解析文件为 AST**
+   ```csharp
+   var translationUnit = index.ParseTranslationUnit(
+       filePath,
+       clangArgs,
+       CXTranslationUnit_Flags.DetailedPreprocessingRecord
    );
    ```
 
-2. **递归解析初始化列表**
-   - `ParseInitList()` - 解析每一层花括号
-   - `SplitElements()` - 分割元素（考虑嵌套）
-   - `ExtractBraces()` - 提取完整的花括号结构
+3. **遍历 AST 提取节点**
+   - 访问数组声明节点 (CX_DeclKind.CX_Decl_Var)
+   - 访问枚举声明节点 (CX_DeclKind.CX_Decl_Enum)
+   - 提取初始化列表和位置信息
 
-3. **位置计算**
-   - 精确计算每个元素在源代码中的字符偏移量
-   - 使用 `StartPosition` 和 `EndPosition` 标记位置
+**位置映射**:
+
+```csharp
+public class SourceLocation
+{
+    public string FilePath { get; set; }
+    public int Line { get; set; }        // 行号 (从 1 开始)
+    public int Column { get; set; }      // 列号 (从 1 开始)
+    public int Offset { get; set; }      // 字符偏移量
+}
+```
+
+**优势**:
+- 准确的语义分析，理解代码结构
+- 支持 C/C++ 所有标准语法
+- 处理模板、宏、预处理器
+- 支持 C++11/14/17/20/23 新特性
+
+---
+
+### 2. 数组初始化解析器 (ArrayInitializerParser)
+
+**文件**: `Parsers/ArrayInitializerParser.cs`
+
+**功能**: 从 AST 中提取数组初始化信息
+
+**关键方法**:
+
+```csharp
+public List<ArrayInitialization> ExtractArrayInitializations(CXTranslationUnit translationUnit)
+```
 
 **数据结构**:
 
 ```csharp
-public class DesignatedInitializer
+public class ArrayInitialization
 {
-    public List<string> Indices { get; set; }      // 索引路径，如 ["0", "1", "2"]
-    public string Value { get; set; }              // 值，如 "42"
-    public int StartPosition { get; set; }         // 在源代码中的起始位置
-    public int EndPosition { get; set; }           // 在源代码中的结束位置
+    public string VariableName { get; set; }     // 变量名
+    public List<int> Dimensions { get; set; }    // 各维度大小，如 [2, 3, 4]
+    public int DimensionCount { get; set; }      // 维度数
+    public string ElementType { get; set; }      // 元素类型
+    public bool IsStructArray { get; set; }      // 是否为结构体数组
+    public List<InitElement> Elements { get; set; } // 初始化元素列表
+    public SourceLocation Location { get; set; } // 源代码位置
+}
+
+public class InitElement
+{
+    public List<int> Indices { get; set; }       // 索引路径，如 [0, 1, 2]
+    public string Value { get; set; }            // 值，如 "42"
+    public List<string> FieldNames { get; set; } // 结构体字段名，如 [".x", ".y"]
+    public SourceLocation Location { get; set; } // 元素位置
 }
 ```
 
+**解析逻辑**:
+
+1. **识别数组声明**
+   - 遍历 AST 找到所有数组变量声明
+   - 提取维度信息和元素类型
+
+2. **解析初始化列表**
+   - 访问 `CX_InitializerListExpr` 节点
+   - 递归处理多层嵌套初始化
+   - 提取每个元素的值和位置
+
+3. **处理结构体数组**
+   - 识别结构体类型
+   - 提取字段名和字段值
+   - 生成 `.x:`、`.y:` 等字段标签
+
+4. **位置计算**
+   - 从 AST 节点的 SourceLocation 获取精确位置
+   - 转换为字符偏移量用于标签插入
+
 ---
 
-### 2. 标签生成器 (ArrayIndexTagger)
+### 3. 枚举定义解析器 (EnumDefinitionParser)
 
-**文件**: `Tags/ArrayIndexTagger.cs`
+**文件**: `Parsers/EnumDefinitionParser.cs`
 
-**功能**: 为每个数组初始化器生成标签
+**功能**: 从 AST 中提取枚举定义和枚举值
+
+**关键方法**:
+
+```csharp
+public List<EnumDefinition> ExtractEnumDefinitions(CXTranslationUnit translationUnit)
+```
+
+**数据结构**:
+
+```csharp
+public class EnumDefinition
+{
+    public string EnumName { get; set; }         // 枚举类型名
+    public List<EnumMember> Members { get; set; } // 枚举成员
+    public SourceLocation Location { get; set; } // 定义位置
+}
+
+public class EnumMember
+{
+    public string Name { get; set; }             // 成员名，如 "RED"
+    public long Value { get; set; }              // 枚举值，如 0
+    public SourceLocation Location { get; set; } // 成员位置
+}
+```
+
+**解析逻辑**:
+
+1. **识别枚举声明**
+   - 遍历 AST 找到所有枚举声明
+   - 提取枚举类型名
+
+2. **计算枚举值**
+   - 显式指定的值直接使用
+   - 未指定的值从 0 开始递增
+   - 处理混合指定值的情况
+
+3. **位置映射**
+   - 记录每个枚举成员的源代码位置
+   - 用于在定义处插入标签
+
+---
+
+### 4. 标签生成器 (ArrayIndexTagger / EnumValueTagger)
+
+**文件**: `Tags/ArrayIndexTagger.cs` / `Tags/EnumValueTagger.cs`
+
+**功能**: 为数组初始化和枚举定义生成标签
 
 **核心接口**:
 
 ```csharp
 public class ArrayIndexTagger : ITagger<IntraTextAdornmentTag>
+{
+    public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
+}
+
+public class EnumValueTagger : ITagger<IntraTextAdornmentTag>
 {
     public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
 }
@@ -116,19 +242,20 @@ public class ArrayIndexTagger : ITagger<IntraTextAdornmentTag>
    var text = snapshot.GetText();
    ```
 
-2. **解析数组初始化**
+2. **解析代码**
    ```csharp
-   var initializations = _detector.Detect(text);
+   var arrays = _arrayParser.Parse(text);
+   var enums = _enumParser.Parse(text);
    ```
 
-3. **生成标签**
+3. **生成数组索引标签**
    ```csharp
-   foreach (var initializer in initializations)
+   foreach (var element in array.Elements)
    {
-       var insertionPoint = new SnapshotPoint(snapshot, initializer.StartPosition);
+       var insertionPoint = new SnapshotPoint(snapshot, element.Location.Offset);
        var tagSpan = new SnapshotSpan(insertionPoint, 0);
        
-       var indexText = _detector.FormatDisplayText(initializer);
+       var indexText = FormatIndexText(element.Indices); // 如 "[0][1][2]:"
        var adornment = CreateAdornment(indexText);
        
        var tag = new IntraTextAdornmentTag(adornment, null);
@@ -136,18 +263,37 @@ public class ArrayIndexTagger : ITagger<IntraTextAdornmentTag>
    }
    ```
 
-**关键属性**:
+4. **生成枚举值标签**
+   ```csharp
+   foreach (var member in enumDef.Members)
+   {
+       var insertionPoint = new SnapshotPoint(snapshot, member.Location.Offset + member.Name.Length);
+       var tagSpan = new SnapshotSpan(insertionPoint, 0);
+       
+       var valueText = $"={member.Value}";
+       var adornment = CreateAdornment(valueText);
+       
+       result.Add(new TagSpan<IntraTextAdornmentTag>(tagSpan, tag));
+   }
+   ```
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `_buffer` | ITextBuffer | 文本缓冲区引用 |
-| `_detector` | DesignatedInitializerDetector | 解析器实例 |
-| `_cachedInitializations` | List<ArrayInitialization> | 缓存的解析结果 |
-| `_lastParsedVersion` | int | 上次解析的文档版本号 |
+**动态更新机制**:
+
+```csharp
+// 监听文本变化事件
+_buffer.Changed += (sender, e) =>
+{
+    // 标记缓存失效
+    _cacheValid = false;
+    
+    // 触发标签更新
+    TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(e.NewSpan));
+};
+```
 
 ---
 
-### 3. 装饰器 UI 控件 (IntraTextAdornment)
+### 5. 装饰器 UI 控件 (IntraTextAdornment)
 
 **文件**: `Tags/IntraTextAdornment.cs`
 
@@ -171,7 +317,7 @@ private TextBlock CreateTextBlock(string text)
         Foreground = new SolidColorBrush(Color.FromRgb(230, 100, 0)), // 橙色
         
         // 背景属性
-        Background = new SolidColorBrush(Color.FromArgb(40, 230, 100, 0)), // 半透明橙色背景
+        Background = new SolidColorBrush(Color.FromArgb(40, 230, 100, 0)), // 半透明背景
         
         // 边距和内边距
         Margin = new Thickness(0, 0, 2, 0),
@@ -193,14 +339,12 @@ private TextBlock CreateTextBlock(string text)
 | `FontWeight` | FontWeight | Bold | 字体粗细 |
 | `Foreground` | Brush | RGB(230,100,0) | 前景色（文字颜色） |
 | `Background` | Brush | ARGB(40,230,100,0) | 背景色（Alpha=40 半透明） |
-| `Margin` | Thickness | (0,0,2,0) | 外边距（左，上，右，下） |
+| `Margin` | Thickness | (0,0,2,0) | 外边距 |
 | `Padding` | Thickness | (2,0,2,0) | 内边距 |
-| `Cursor` | Cursor | Hand | 鼠标悬停时的光标 |
-| `ToolTip` | string | - | 工具提示文本 |
 
 ---
 
-### 4. 标签提供者 (ArrayIndexTaggerProvider)
+### 6. 标签提供者 (ArrayIndexTaggerProvider)
 
 **文件**: `Tags/ArrayIndexTaggerProvider.cs`
 
@@ -272,38 +416,62 @@ Background = Color.FromArgb(80, 0, 0, 0)     // 半透明黑色背景
 
 ---
 
-## 性能优化
+## ClangSharp 集成
 
-### 1. 缓存机制
+### 安装
+
+通过 NuGet 包管理器安装：
+
+```powershell
+Install-Package ClangSharp
+```
+
+### 使用示例
 
 ```csharp
-// 缓存上一次的解析结果
-private List<ArrayInitialization> _cachedInitializations;
-private int _lastParsedVersion = -1;
+using ClangSharp;
 
-// 使用缓存
-if (_cachedInitializations != null && _lastParsedVersion == snapshot.Version.VersionNumber)
+// 创建 Clang 索引
+var index = CXIndex.Create();
+
+// 解析文件
+var translationUnit = index.ParseTranslationUnit(
+    filePath: "test.cpp",
+    commandLineArgs: new[] { "-std=c++20" },
+    flags: CXTranslationUnit_Flags.DetailedPreprocessingRecord
+);
+
+// 遍历 AST
+translationUnit.TranslationUnitDecl.VisitChildren((CXCursor cursor, CXCursor parent) =>
 {
-    // 使用缓存，避免重复解析
-}
+    if (cursor.Kind == CXCursorKind.CXCursor_VarDecl)
+    {
+        // 处理变量声明
+        var arrayDecl = cursor;
+    }
+    else if (cursor.Kind == CXCursorKind.CXCursor_EnumDecl)
+    {
+        // 处理枚举声明
+        var enumDecl = cursor;
+    }
+    
+    return CXChildVisitResult.CXChildVisit_Continue;
+});
 ```
 
-### 2. 位置去重
+### 位置映射
 
 ```csharp
-var addedPositions = new HashSet<int>();
-if (!addedPositions.Add(initializer.StartPosition))
-    continue; // 跳过重复位置
-```
+// 获取 AST 节点的源代码位置
+var sourceRange = cursor.Extent;
+var startLoc = sourceRange.Start;
+var endLoc = sourceRange.End;
 
-### 3. 延迟更新
+// 转换为行号/列号
+startLoc.GetSpellingLocation(out var file, out var line, out var column, out var offset);
 
-```csharp
-private const int UpdateDelay = 500; // 500ms 延迟
-private Timer _updateTimer;
-
-// 延迟触发标签更新
-_updateTimer.Change(UpdateDelay, Timeout.Infinite);
+// 转换为字符偏移量（用于标签插入）
+int charOffset = ConvertToCharOffset(file.Name, line, column);
 ```
 
 ---
@@ -313,7 +481,7 @@ _updateTimer.Change(UpdateDelay, Timeout.Infinite);
 ### 日志输出
 
 ```csharp
-ErrorHandler.LogDebug($"添加标签：{indexText} 位置：{initializer.StartPosition}");
+ErrorHandler.LogDebug($"添加标签：{indexText} 位置：{element.Location.Offset}");
 ErrorHandler.LogWarning($"解析警告：{message}");
 ErrorHandler.LogError($"解析错误：{ex.Message}");
 ```
@@ -327,33 +495,34 @@ C:\Users\<用户名>\Documents\ArrayInlineIndex\Logs\ArrayInlineIndex_YYYYMMDD.l
 ### 常见调试场景
 
 1. **标签不显示**
-   - 检查 `StartPosition` 是否正确
-   - 检查 `spans` 范围检查是否过于严格
+   - 检查 AST 节点是否正确提取
+   - 检查位置映射是否准确
    - 查看日志中的标签数量
 
 2. **标签位置错误**
-   - 验证 `ParseInitList` 中的位置计算
-   - 检查 `globalOffset` 是否正确传递
+   - 验证 AST 节点的 SourceLocation
+   - 检查字符偏移量转换是否正确
    - 对比源代码实际字符位置
 
-3. **标签重复**
-   - 检查 `addedPositions` 去重逻辑
-   - 验证缓存机制是否正常工作
+3. **解析失败**
+   - 检查 ClangSharp 版本兼容性
+   - 验证编译参数是否正确
+   - 查看 Clang 诊断信息
 
 ---
 
 ## 扩展性
 
-### 添加新的样式
+### 添加新的标签类型
 
-1. 修改 `IntraTextAdornment.CreateTextBlock()` 方法
-2. 添加配置选项到 `OptionsPage`
-3. 在用户设置中保存样式偏好
+1. 创建新的 Tagger 类（如 `StructFieldTagger`）
+2. 实现 `ITagger<IntraTextAdornmentTag>` 接口
+3. 在 Provider 中注册
 
 ### 支持新的语言
 
-1. 修改 `ArrayIndexTaggerProvider` 的 `[ContentType]` 特性
-2. 调整 `RegexArrayParser` 的正则表达式
+1. 修改 Provider 的 `[ContentType]` 特性
+2. 调整 ClangSharp 的解析参数
 3. 测试新语言的解析效果
 
 ### 添加交互功能
@@ -372,6 +541,8 @@ textBlock.MouseLeftButtonDown += (s, e) =>
 
 - [Visual Studio Editor SDK](https://docs.microsoft.com/en-us/visualstudio/extensibility/editor)
 - [Intra-text Adornments Sample](https://github.com/microsoft/VSSDK-Extensibility-Samples/tree/master/IntraTextAdornments)
+- [ClangSharp Documentation](https://github.com/SimonCropp/ClangSharp)
+- [libclang API Reference](https://clang.llvm.org/doxygen/group__CINDEX.html)
 - [MEF (Managed Extensibility Framework)](https://docs.microsoft.com/en-us/dotnet/framework/mef/)
 - [WPF TextBlock Class](https://docs.microsoft.com/en-us/dotnet/api/system.windows.controls.textblock)
 
@@ -381,19 +552,19 @@ textBlock.MouseLeftButtonDown += (s, e) =>
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| 1.0 | 2026-03-27 | 初始版本，使用 CppAst 解析 |
-| 2.0 | 2026-03-27 | 迁移到正则表达式解析 |
-| 2.1 | 2026-03-27 | 修复位置计算问题 |
+| 1.0 | 2026-03-27 | 初始版本，使用正则表达式解析 |
+| 2.0 | 2026-03-28 | 迁移到 ClangSharp AST 解析，支持 C/C++ 标准语法 |
 
 ---
 
 ## 总结
 
-Intra-text Adornments 方案提供了高度可定制的文本内嵌 UI 能力，适合需要显示复杂格式的场景。通过合理配置样式属性和优化性能，可以实现既美观又高效的数组索引标签显示。
+Intra-text Adornments 方案结合 ClangSharp AST 解析提供了准确、可扩展的标签显示能力。通过精准的语义分析和位置映射，可以实现高质量的数组索引和枚举值提示。
 
 **关键要点**:
-1. ✅ 使用正则表达式解析，无需外部依赖
-2. ✅ 精确计算字符位置，确保标签正确显示
-3. ✅ 使用缓存和去重机制优化性能
+1. ✅ 使用 ClangSharp AST 解析，语义准确
+2. ✅ 支持 C/C++ 所有标准语法和新特性
+3. ✅ 精准的位置映射，标签显示正确
 4. ✅ 提供多种颜色主题和样式配置选项
-5. ✅ 完善的日志系统便于调试
+5. ✅ 动态更新机制，实时响应代码编辑
+6. ✅ 完善的日志系统便于调试
