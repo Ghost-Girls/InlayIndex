@@ -1,12 +1,63 @@
 严重性	代码	说明	项目	文件	行	抑制状态	详细信息
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	166		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	271		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	301		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	330		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	359		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	417		
-错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	479		
-错误(活动)	CS1061	“void*”未包含“IsValid”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“IsValid”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	430		
-错误(活动)	CS1061	“void*”未包含“Dispose”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“Dispose”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	442		
-错误(活动)	CS1061	“void*”未包含“AsLongLong”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“AsLongLong”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	432		
-错误(活动)	CS1061	“CXClientData”未包含“Data”的定义，并且找不到可接受第一个“CXClientData”类型参数的可访问扩展方法“Data”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	28		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	53		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	58		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	73		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	77		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	86		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	91		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	104		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	109		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	113		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexTagger.cs	117		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	28		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	29		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	34		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	37		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	41		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	46		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	52		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	57		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	62		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	70		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	78		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	84		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	89		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	95		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	97		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	99		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	103		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexViewCreationListener.cs	108		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	69		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	74		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	75		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	83		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	95		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	102		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	105		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	111		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	170		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	184		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	188		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	194		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	208		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	218		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	223		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	230		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	235		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	241		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	246		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	18		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	19		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	24		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	29		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	35		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	41		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	45		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	52		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	56		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	60		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	66		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	72		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	77		
+错误(活动)	CS0103	当前上下文中不存在名称“LogHelper”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	82		
+错误(活动)	CS0103	当前上下文中不存在名称“GenerateStructFieldTags”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\InlayHintGenerator.cs	42		

@@ -10,48 +10,58 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Text.Adornments;
+using InlayIndex.Utils;
+using Microsoft.VisualStudio.Shell;
 
 namespace InlayIndex.Adornment
 {
-    [Export(typeof(IViewTaggerProvider))]
+    [Export(typeof(ITaggerProvider))]
     [ContentType("C/C++")]
     [TagType(typeof(IntraTextAdornmentTag))]
-    public class InlayIndexTaggerProvider : IViewTaggerProvider
+    public class InlayIndexTaggerProvider : ITaggerProvider
     {
-        [Import]
-        internal ITextBufferFactoryService TextBufferFactoryService { get; set; }
-
-        [Import]
-        internal ITextEditorFactoryService TextEditorFactoryService { get; set; }
-
-        public ITagger<T> CreateTagger<T>(ITextView textView, ITextBuffer buffer) where T : ITag
+        public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
         {
-            if (textView.TextBuffer == buffer)
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+
+            InlayIndexTagger tagger;
+            // 检查是否已经有 Tagger 存储在属性中
+            if (buffer.Properties.ContainsProperty(typeof(InlayIndexTagger)))
             {
-                return new InlayIndexTagger(textView, buffer) as ITagger<T>;
+                tagger = buffer.Properties.GetProperty<InlayIndexTagger>(typeof(InlayIndexTagger));
+                LogHelper.WriteRenderInfo("TaggerProvider: 从属性获取到已存在的 Tagger");
             }
-            return null;
+            else
+            {
+                tagger = new InlayIndexTagger(buffer);
+                buffer.Properties.AddProperty(typeof(InlayIndexTagger), tagger);
+                LogHelper.WriteRenderInfo("TaggerProvider: 创建并存储新的 Tagger");
+            }
+
+            return tagger as ITagger<T>;
         }
     }
 
     public class InlayIndexTagger : ITagger<IntraTextAdornmentTag>
     {
-        private ITextView _textView;
         private ITextBuffer _textBuffer;
-        private List<IntraTextAdornmentTag> _tags = new List<IntraTextAdornmentTag>();
+        private List<ITagSpan<IntraTextAdornmentTag>> _tagSpans = new List<ITagSpan<IntraTextAdornmentTag>>();
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
-        public InlayIndexTagger(ITextView textView, ITextBuffer textBuffer)
+        public InlayIndexTagger(ITextBuffer textBuffer)
         {
-            _textView = textView;
             _textBuffer = textBuffer;
 
             _textBuffer.ChangedLowPriority += OnTextBufferChanged;
+            
+            LogHelper.WriteRenderInfo($"InlayIndexTagger 创建成功 - 文本缓冲区：{_textBuffer.CurrentSnapshot.Length} 字符");
         }
 
         private void OnTextBufferChanged(object sender, TextContentChangedEventArgs e)
         {
+            LogHelper.WriteRenderInfo($"文本缓冲区变化 - 旧长度：{e.Before.Length}, 新长度：{e.After.Length}");
             var snapshot = _textBuffer.CurrentSnapshot;
             var span = new SnapshotSpan(snapshot, 0, snapshot.Length);
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(span));
@@ -59,25 +69,45 @@ namespace InlayIndex.Adornment
 
         public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
-            // IntraTextAdornmentTag 不需要通过 GetTags 返回
-            // 它们会直接添加到文本视图的 adornment layer
-            yield break;
+            LogHelper.WriteRenderInfo($"GetTags 被调用，spans.Count={spans.Count}, _tagSpans.Count={_tagSpans.Count}");
+            foreach (var tagSpan in _tagSpans)
+            {
+                yield return tagSpan;
+            }
         }
 
         public void UpdateTags(List<Models.InlayHintTag> hintTags)
         {
-            _tags.Clear();
+            // 确保在 UI 线程上执行
+            if (!ThreadHelper.CheckAccess())
+            {
+                ThreadHelper.JoinableTaskFactory.Run(async () =>
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    UpdateTags(hintTags);
+                });
+                return;
+            }
+            
+            LogHelper.WriteRenderInfo($"开始更新标签 - 标签数：{hintTags.Count}");
+            _tagSpans.Clear();
 
             var snapshot = _textBuffer.CurrentSnapshot;
+            LogHelper.WriteRenderInfo($"当前快照长度：{snapshot.Length} 字符");
+
+            int successCount = 0;
+            int failCount = 0;
 
             foreach (var hintTag in hintTags)
             {
                 try
                 {
+                    LogHelper.WriteDebug($"创建标签 - 文本：{hintTag.Text}, 位置：{hintTag.StartPosition}");
                     var position = Math.Min(hintTag.StartPosition, snapshot.Length);
                     var span = new SnapshotSpan(snapshot, position, 0);
 
                     var adornment = CreateAdornment(hintTag);
+                    LogHelper.WriteDebug($"装饰元素创建成功 - 类型：{adornment.GetType().Name}");
 
                     var intraTag = new IntraTextAdornmentTag(
                         adornment,
@@ -88,15 +118,23 @@ namespace InlayIndex.Adornment
                         null,
                         null);
 
-                    _tags.Add(intraTag);
+                    var tagSpan = new TagSpan<IntraTextAdornmentTag>(span, intraTag);
+                    _tagSpans.Add(tagSpan);
+                    successCount++;
+                    LogHelper.WriteRenderInfo($"标签创建成功：{hintTag.Text} @ {position}");
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    failCount++;
+                    LogHelper.WriteError($"标签创建失败 - 文本：{hintTag.Text}, 位置：{hintTag.StartPosition}", ex);
                 }
             }
 
+            LogHelper.WriteRenderInfo($"标签更新完成 - 成功：{successCount}, 失败：{failCount}");
+
             var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(fullSpan));
+            LogHelper.WriteRenderInfo("触发 TagsChanged 事件");
         }
 
         private System.Windows.UIElement CreateAdornment(Models.InlayHintTag hintTag)

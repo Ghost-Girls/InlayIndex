@@ -7,6 +7,20 @@ namespace InlayIndex.Options
 {
     public class InlayIndexOptionsPage : DialogPage
     {
+        private static InlayIndexOptionsPage _defaultInstance;
+        
+        public static InlayIndexOptionsPage Default
+        {
+            get
+            {
+                if (_defaultInstance == null)
+                {
+                    _defaultInstance = new InlayIndexOptionsPage();
+                }
+                return _defaultInstance;
+            }
+        }
+        
         private bool enableArrayIndex = true;
         private bool enableEnumValue = true;
         private bool enableStructField = true;
@@ -18,6 +32,7 @@ namespace InlayIndex.Options
         private int maxElements = 1000;
         private bool enableC = true;
         private bool enableCpp = true;
+        private string logDirectory = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -118,6 +133,15 @@ namespace InlayIndex.Options
         {
             get => enableCpp;
             set => enableCpp = value;
+        }
+
+        [Category("日志配置")]
+        [DisplayName("日志目录")]
+        [Description("日志文件的存储目录")]
+        public string LogDirectory
+        {
+            get => logDirectory;
+            set => logDirectory = value;
         }
 
         public Color GetForegroundColor()

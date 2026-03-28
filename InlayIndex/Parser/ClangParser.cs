@@ -1,5 +1,6 @@
 using ClangSharp;
 using InlayIndex.Models;
+using InlayIndex.Utils;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -65,16 +66,21 @@ namespace InlayIndex.Parser
         public ClangParser()
         {
             _index = CXIndex.Create();
+            LogHelper.WriteParseInfo("ClangParser 初始化成功");
         }
 
         public ParseResult ParseFile(string filePath, string[] compilationArgs = null)
         {
+            LogHelper.WriteParseInfo($"开始解析文件：{filePath}");
+            LogHelper.WriteParseInfo($"编译参数：{string.Join(" ", compilationArgs ?? new string[] { "-x", "c++" })}");
+            
             var result = new ParseResult();
             
             try
             {
                 var args = compilationArgs ?? new string[] { "-x", "c++" };
                 
+                LogHelper.WriteParseInfo("开始解析翻译单元...");
                 var tu = CXTranslationUnit.Parse(
                     _index,
                     filePath,
@@ -86,18 +92,23 @@ namespace InlayIndex.Parser
                 {
                     result.Success = false;
                     result.ErrorMessage = "Failed to parse translation unit";
+                    LogHelper.WriteError("翻译单元解析失败");
                     return result;
                 }
 
                 result.TranslationUnit = tu;
                 result.Success = true;
                 
+                LogHelper.WriteParseInfo($"翻译单元解析成功，开始遍历 AST...");
                 VisitChildren(tu.Cursor, result);
+                
+                LogHelper.WriteParseInfo($"解析完成 - 数组：{result.Arrays.Count}, 枚举：{result.Enums.Count}, 结构体：{result.Structs.Count}");
             }
             catch (Exception ex)
             {
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
+                LogHelper.WriteError("解析过程发生异常", ex);
             }
 
             return result;
@@ -156,6 +167,7 @@ namespace InlayIndex.Parser
 
         private void VisitChildren(CXCursor cursor, ParseResult result)
         {
+            LogHelper.WriteDebug($"开始遍历 AST 节点，根节点：{cursor.Kind}");
             var clientData = GCHandle.Alloc(result);
             try
             {
@@ -169,14 +181,17 @@ namespace InlayIndex.Parser
                         switch (c.Kind)
                         {
                             case CXCursorKind.CXCursor_VarDecl:
+                                LogHelper.WriteDebug($"发现变量声明：{c.ToString()}");
                                 HandleVariableDeclaration(c, res);
                                 break;
                             case CXCursorKind.CXCursor_EnumDecl:
+                                LogHelper.WriteDebug($"发现枚举声明：{c.ToString()}");
                                 HandleEnumDeclaration(c, res);
                                 break;
                             case CXCursorKind.CXCursor_StructDecl:
                             case CXCursorKind.CXCursor_UnionDecl:
                             case CXCursorKind.CXCursor_ClassDecl:
+                                LogHelper.WriteDebug($"发现结构体/类声明：{c.ToString()}");
                                 HandleStructDeclaration(c, res);
                                 break;
                         }
@@ -190,6 +205,7 @@ namespace InlayIndex.Parser
             {
                 clientData.Free();
             }
+            LogHelper.WriteDebug("AST 遍历完成");
         }
 
         private void HandleVariableDeclaration(CXCursor cursor, ParseResult result)
@@ -199,29 +215,35 @@ namespace InlayIndex.Parser
             if (type.kind == CXTypeKind.CXType_ConstantArray || 
                 type.kind == CXTypeKind.CXType_IncompleteArray)
             {
+                LogHelper.WriteDebug($"处理数组变量：{cursor.ToString()}, 类型：{type.kind}");
                 var arrayInfo = ExtractArrayInfo(cursor, type);
                 if (arrayInfo != null)
                 {
                     result.Arrays.Add(arrayInfo);
+                    LogHelper.WriteParseInfo($"提取数组：{arrayInfo.Name}, 维度：{arrayInfo.Dimensions}, 大小：{string.Join("x", arrayInfo.DimensionSizes)}");
                 }
             }
         }
 
         private void HandleEnumDeclaration(CXCursor cursor, ParseResult result)
         {
+            LogHelper.WriteDebug($"处理枚举：{cursor.ToString()}");
             var enumInfo = ExtractEnumInfo(cursor);
             if (enumInfo != null)
             {
                 result.Enums.Add(enumInfo);
+                LogHelper.WriteParseInfo($"提取枚举：{enumInfo.Name}, 成员数：{enumInfo.Members.Count}");
             }
         }
 
         private void HandleStructDeclaration(CXCursor cursor, ParseResult result)
         {
+            LogHelper.WriteDebug($"处理结构体：{cursor.ToString()}");
             var structInfo = ExtractStructInfo(cursor);
             if (structInfo != null)
             {
                 result.Structs.Add(structInfo);
+                LogHelper.WriteParseInfo($"提取结构体：{structInfo.Name}, 字段数：{structInfo.Fields.Count}");
             }
         }
 
@@ -230,7 +252,7 @@ namespace InlayIndex.Parser
             var arrayInfo = new ArrayInfo
             {
                 Name = cursor.ToString(),
-                TypeName = type.Declaration.ToString(),
+                TypeName = type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                 Elements = new List<ArrayElement>(),
                 DeclarationStart = (int)GetOffset(cursor.Location),
                 DeclarationEnd = (int)GetOffset(cursor.Location)
@@ -400,7 +422,7 @@ namespace InlayIndex.Parser
             var enumInfo = new EnumInfo
             {
                 Name = cursor.ToString(),
-                TypeName = cursor.Type.Declaration.ToString(),
+                TypeName = cursor.Type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                 Members = new List<EnumMember>(),
                 DeclarationStart = (int)GetOffset(cursor.Location),
                 DeclarationEnd = (int)GetOffset(cursor.Location)
@@ -485,7 +507,7 @@ namespace InlayIndex.Parser
                             var field = new StructFieldInfo
                             {
                                 Name = child.ToString(),
-                                TypeName = child.Type.Declaration.ToString(),
+                                TypeName = child.Type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                                 IsArray = child.Type.kind == CXTypeKind.CXType_ConstantArray,
                                 StartPosition = (int)GetOffset(child.Location),
                                 EndPosition = (int)GetOffset(child.Location)
