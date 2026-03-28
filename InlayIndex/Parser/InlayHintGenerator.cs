@@ -87,6 +87,37 @@ namespace InlayIndex.Parser
         {
             var tags = new List<InlayHintTag>();
 
+            // 生成外层初始化列表的标签
+            foreach (var initList in array.InitLists)
+            {
+                string indexText;
+                if (_options.IndexDisplayMode == Options.IndexDisplayMode.Full)
+                {
+                    // 完整索引模式：显示完整的多维索引
+                    indexText = BuildIndexText(initList.Indices);
+                }
+                else
+                {
+                    // 简洁索引模式：只显示当前维度的最后一个索引
+                    indexText = $"[{initList.Indices[initList.Indices.Length - 1]}]";
+                }
+                
+                var tag = new InlayHintTag
+                {
+                    Text = $"{indexText}:",
+                    StartPosition = initList.StartPosition,
+                    EndPosition = initList.StartPosition,
+                    Type = InlayHintType.ArrayIndex,
+                    ForegroundColor = _options.GetForegroundColor(),
+                    FontSize = _options.FontSize,
+                    FontWeight = _options.GetFontWeight(),
+                    BackgroundOpacity = _options.BackgroundOpacity
+                };
+
+                tags.Add(tag);
+            }
+
+            // 生成数组元素的标签
             foreach (var element in array.Elements)
             {
                 var indexText = BuildIndexText(element.Indices);

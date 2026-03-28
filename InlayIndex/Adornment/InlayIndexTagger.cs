@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Text.Adornments;
 using InlayIndex.Utils;
@@ -98,12 +97,23 @@ namespace InlayIndex.Adornment
             int successCount = 0;
             int failCount = 0;
 
+            // 打印文件前200个字符，方便调试
+            string filePreview = snapshot.GetText().Substring(0, Math.Min(200, snapshot.Length));
+            LogHelper.WriteRenderInfo($"文件预览：{filePreview}");
+
             foreach (var hintTag in hintTags)
             {
                 try
                 {
-                    LogHelper.WriteDebug($"创建标签 - 文本：{hintTag.Text}, 位置：{hintTag.StartPosition}");
+                    LogHelper.WriteDebug($"创建标签 - 文本：{hintTag.Text}, 原始位置：{hintTag.StartPosition}, 快照长度：{snapshot.Length}");
                     var position = Math.Min(hintTag.StartPosition, snapshot.Length);
+                    
+                    // 打印位置周围的字符（位置-5 到 位置+10）
+                    int contextStart = Math.Max(0, position - 5);
+                    int contextEnd = Math.Min(snapshot.Length, position + 15);
+                    string context = snapshot.GetText(new Span(contextStart, contextEnd - contextStart));
+                    LogHelper.WriteDebug($"位置上下文：[{contextStart}-{contextEnd}]: '{context}'");
+                    
                     var span = new SnapshotSpan(snapshot, position, 0);
 
                     var adornment = CreateAdornment(hintTag);

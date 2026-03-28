@@ -29,6 +29,13 @@ namespace InlayIndex.Models
         public List<StructField> NestedFields { get; set; }
     }
 
+    public class InitListInfo
+    {
+        public int[] Indices { get; set; }
+        public int StartPosition { get; set; }
+        public int EndPosition { get; set; }
+    }
+
     public class ArrayInfo
     {
         public string Name { get; set; }
@@ -36,6 +43,7 @@ namespace InlayIndex.Models
         public ArrayDimension Dimensions { get; set; }
         public int[] DimensionSizes { get; set; }
         public List<ArrayElement> Elements { get; set; }
+        public List<InitListInfo> InitLists { get; set; } = new List<InitListInfo>();
         public int DeclarationStart { get; set; }
         public int DeclarationEnd { get; set; }
         public bool IsStructArray { get; set; }

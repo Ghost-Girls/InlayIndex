@@ -33,6 +33,7 @@ namespace InlayIndex.Options
         private bool enableC = true;
         private bool enableCpp = true;
         private string logDirectory = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
+        private IndexDisplayMode indexDisplayMode = IndexDisplayMode.Simple;
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -144,6 +145,16 @@ namespace InlayIndex.Options
             set => logDirectory = value;
         }
 
+        [Category("显示设置")]
+        [DisplayName("索引显示模式")]
+        [Description("选择数组索引的显示模式：简洁索引（默认）或完整索引")]
+        [DefaultValue(IndexDisplayMode.Simple)]
+        public IndexDisplayMode IndexDisplayMode
+        {
+            get => indexDisplayMode;
+            set => indexDisplayMode = value;
+        }
+
         public Color GetForegroundColor()
         {
             switch (selectedTheme)
@@ -191,5 +202,11 @@ namespace InlayIndex.Options
         Medium,
         SemiBold,
         Bold
+    }
+
+    public enum IndexDisplayMode
+    {
+        Simple,
+        Full
     }
 }

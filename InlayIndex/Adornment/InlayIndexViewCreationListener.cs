@@ -135,16 +135,32 @@ namespace InlayIndex.Adornment
                 }
 
                 ParseResult result;
-                if (!string.IsNullOrEmpty(filePath))
+                // 强制使用编辑器快照中的内容，确保与显示内容一致
+                // 详细诊断：打印开头和结尾的字符，检查 BOM 和换行符
+                LogHelper.WriteViewInfo($"解析代码字符串（来自编辑器快照），长度：{text.Length}，文件：{filePath}");
+                LogHelper.WriteViewInfo($"前 20 个字符（带索引）：");
+                for (int i = 0; i < Math.Min(20, text.Length); i++)
                 {
-                    LogHelper.WriteViewInfo($"解析文件：{filePath}");
-                    result = _parser.ParseFile(filePath);
+                    char c = text[i];
+                    string desc = char.IsControl(c) ? $"\\x{(int)c:X2}" : c.ToString();
+                    LogHelper.WriteViewInfo($"  [{i}]: '{desc}'");
                 }
-                else
+                
+                // 检查换行符
+                int crCount = 0, lfCount = 0, crlfCount = 0;
+                for (int i = 0; i < text.Length; i++)
                 {
-                    LogHelper.WriteViewInfo($"解析代码字符串，长度：{text.Length}");
-                    result = _parser.ParseCode(text);
+                    if (text[i] == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+                    {
+                        crlfCount++;
+                        i++;
+                    }
+                    else if (text[i] == '\r') crCount++;
+                    else if (text[i] == '\n') lfCount++;
                 }
+                LogHelper.WriteViewInfo($"换行符统计：CR={crCount}, LF={lfCount}, CRLF={crlfCount}");
+                
+                result = _parser.ParseCode(text, filePath);
 
                 if (result.Success)
                 {

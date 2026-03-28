@@ -12,11 +12,37 @@ namespace InlayIndex.Parser
     {
         private CXIndex _index;
         private bool _disposed = false;
+        // 保存当前解析的原始 UTF-16 字符串，用于 offset 转换
+        private string _currentCode = string.Empty;
 
-        private static uint GetOffset(CXSourceLocation location)
+        private uint GetOffset(CXSourceLocation location)
         {
-            location.GetSpellingLocation(out _, out _, out _, out uint offset);
-            return offset;
+            location.GetSpellingLocation(out _, out _, out _, out uint utf8Offset);
+            uint result = utf8Offset;
+            
+            // 将 UTF-8 字节 offset 转换为 UTF-16 字符索引
+            if (!string.IsNullOrEmpty(_currentCode))
+            {
+                try
+                {
+                    // 获取完整的 UTF-8 字节
+                    byte[] fullUtf8 = System.Text.Encoding.UTF8.GetBytes(_currentCode);
+                    int safeUtf8Offset = Math.Min((int)utf8Offset, fullUtf8.Length);
+                    
+                    // 简单可靠的方法：把 UTF-8 前 N 个字节转回字符串，取其长度
+                    string utf16UpToOffset = System.Text.Encoding.UTF8.GetString(fullUtf8, 0, safeUtf8Offset);
+                    result = (uint)utf16UpToOffset.Length;
+                    
+                    LogHelper.WriteDebug($"位置转换：UTF-8 offset={utf8Offset} → UTF-16 index={result}");
+                }
+                catch (Exception ex)
+                {
+                    LogHelper.WriteError($"位置转换失败", ex);
+                    result = utf8Offset;
+                }
+            }
+            
+            return result;
         }
 
         private static CXClientData ToClientData(GCHandle handle)
@@ -122,17 +148,24 @@ namespace InlayIndex.Parser
             {
                 var args = compilationArgs ?? new string[] { "-x", "c++" };
                 
+                // 保存原始 UTF-16 字符串，用于后续 offset 转换
+                _currentCode = code;
+                
+                // 将 C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
+                byte[] utf8Bytes = System.Text.Encoding.UTF8.GetBytes(code);
+                LogHelper.WriteParseInfo($"ParseCode: 转换字符串 - UTF-16 长度={code.Length}, UTF-8 字节数={utf8Bytes.Length}");
+                
                 unsafe
                 {
                     fixed (char* filenamePtr = fileName)
-                    fixed (char* contentsPtr = code)
+                    fixed (byte* contentsPtr = utf8Bytes)
                     {
                         var unsavedFile = new CXUnsavedFile[1];
                         unsavedFile[0] = new CXUnsavedFile
                         {
                             Filename = (sbyte*)filenamePtr,
                             Contents = (sbyte*)contentsPtr,
-                            Length = (uint)code.Length
+                            Length = (uint)utf8Bytes.Length
                         };
 
                         var tu = CXTranslationUnit.Parse(
@@ -370,6 +403,44 @@ namespace InlayIndex.Parser
                 return;
             }
 
+            // 记录当前初始化列表的位置（仅当不是最内层时）
+            if (currentIndices.Length > 0)
+            {
+                uint offset = GetOffset(cursor.Location);
+                int searchStart = (int)offset;
+                int bracePosition = -1;
+                
+                // 可靠地寻找左大括号的位置
+                if (!string.IsNullOrEmpty(_currentCode) && searchStart > 0)
+                {
+                    // 从当前位置向左寻找，最多往前找200个字符
+                    int searchLimit = Math.Max(0, searchStart - 200);
+                    
+                    for (int i = searchStart; i >= searchLimit; i--)
+                    {
+                        char c = _currentCode[i];
+                        if (c == '{')
+                        {
+                            bracePosition = i;
+                            break;
+                        }
+                    }
+                }
+                
+                // 如果没有找到左大括号，就使用原始位置
+                int finalPosition = bracePosition >= 0 ? bracePosition : searchStart;
+                
+                var initList = new InitListInfo
+                {
+                    Indices = (int[])currentIndices.Clone(),
+                    StartPosition = finalPosition,
+                    EndPosition = finalPosition
+                };
+                
+                arrayInfo.InitLists.Add(initList);
+                LogHelper.WriteDebug($"提取初始化列表 - 索引：[{string.Join("][", currentIndices)}], 原始位置：{searchStart}, 最终位置：{finalPosition}");
+            }
+
             var state = new ArrayElementsState(0, arrayInfo, dimension, currentIndices);
             var clientData = GCHandle.Alloc(state);
             try
@@ -392,15 +463,40 @@ namespace InlayIndex.Parser
                         }
                         else if (s.Dimension == 1)
                         {
+                            uint offset = GetOffset(child.Location);
+                            int adjustedOffset = (int)offset;
+                            
+                            // 简单调整：向左微调，跳过空白字符
+                            if (!string.IsNullOrEmpty(_currentCode) && adjustedOffset > 0)
+                            {
+                                adjustedOffset = Math.Max(0, adjustedOffset - 3); // 先向左移3个位置
+                                
+                                // 继续向左寻找非空白字符的位置
+                                while (adjustedOffset > 0)
+                                {
+                                    char c = _currentCode[adjustedOffset];
+                                    if (c == ' ' || c == ',' || c == '\t')
+                                    {
+                                        adjustedOffset--;
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            
                             var element = new ArrayElement
                             {
                                 Indices = new int[s.CurrentIndices.Length + 1],
-                                StartPosition = (int)GetOffset(child.Location),
-                                EndPosition = (int)GetOffset(child.Location),
+                                StartPosition = adjustedOffset,
+                                EndPosition = adjustedOffset,
                                 Value = child.ToString()
                             };
                             Array.Copy(s.CurrentIndices, element.Indices, s.CurrentIndices.Length);
                             element.Indices[s.CurrentIndices.Length] = s.ChildIndex;
+                            
+                            LogHelper.WriteDebug($"提取数组元素 - 索引：{s.ChildIndex}, 值：{element.Value}, 原始位置：{offset}, 调整后位置：{adjustedOffset}");
                             
                             s.ArrayInfo.Elements.Add(element);
                             s.ChildIndex++;
