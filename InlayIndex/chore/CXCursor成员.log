@@ -1,0 +1,373 @@
+_data_e__FixedBuffer
+data
+kind
+xdata
+ArgumentType {get;}
+ArraySize {get;}
+AsFunction {get;}
+AtomicOperatorKind {get;}
+AttrKind {get;}
+AttrKindSpelling {get;}
+Availability {get;}
+BinaryOperatorKind {get;}
+BinaryOperatorKindSpelling {get;}
+BindingExpr {get;}
+BitWidth {get;}
+BlockManglingContextDecl {get;}
+BlockManglingNumber {get;}
+BlockMissingReturnType {get;}
+Body {get;}
+BoolLiteralValue {get;}
+BriefCommentText {get;}
+CallResultType {get;}
+CanAvoidCopyToHeap {get;}
+CanonicalCursor {get;}
+CapturedDecl {get;}
+CapturedRecordDecl {get;}
+CapturedRegionKind {get;}
+CapturedStmt {get;}
+CapturesCXXThis {get;}
+CastKind {get;}
+CastKindSpelling {get;}
+CharacterLiteralKind {get;}
+CharacterLiteralValue {get;}
+CommentRange {get;}
+CompletionString {get;}
+ComputationLhsType {get;}
+ComputationResultType {get;}
+ConstraintExpr {get;}
+ConstructedBaseClass {get;}
+ConstructedBaseClassShadowDecl {get;}
+ConstructionKind {get;}
+ConstructsVirtualBase {get;}
+ContextParam {get;}
+ContextParamPosition {get;}
+CXXAccessSpecifier {get;}
+CXXConstructor_IsConvertingConstructor {get;}
+CXXConstructor_IsCopyConstructor {get;}
+CXXConstructor_IsDefaultConstructor {get;}
+CXXConstructor_IsMoveConstructor {get;}
+CXXField_IsMutable {get;}
+CXXManglings {get;}
+CXXMethod_IsConst {get;}
+CXXMethod_IsCopyAssignmentOperator {get;}
+CXXMethod_IsDefaulted {get;}
+CXXMethod_IsMoveAssignmentOperator {get;}
+CXXMethod_IsPureVirtual {get;}
+CXXMethod_IsStatic {get;}
+CXXMethod_IsVirtual {get;}
+CXXRecord_IsAbstract {get;}
+DeclaredReturnType {get;}
+DeclKind {get;}
+DeclKindSpelling {get;}
+DeclObjCTypeEncoding {get;}
+DecomposedDecl {get;}
+DefaultArg {get;}
+DefaultArgType {get;}
+Definition {get;}
+DependentLambdaCallOperator {get;}
+DescribedCursorTemplate {get;}
+DescribedTemplate {get;}
+Destructor {get;}
+DisplayName {get;}
+DoesNotEscape {get;}
+DoesUsualArrayDeleteWantSize {get;}
+EnumConstantDeclUnsignedValue {get;}
+EnumConstantDeclValue {get;}
+EnumDecl_IntegerType {get;}
+EnumDecl_IsScoped {get;}
+EnumDecl_PromotionType {get;}
+Evaluate {get;}
+ExceptionSpecificationType {get;}
+ExprDependence {get;}
+Extent {get;}
+FieldDeclBitWidth {get;}
+FieldIndex {get;}
+FloatingLiteralSemantics {get;}
+FloatingLiteralValueAsApproximateDouble {get;}
+FoundDecl {get;}
+FriendDecl {get;}
+FunctionScopeDepth {get;}
+FunctionScopeIndex {get;}
+GuidValue {get;}
+HadMultipleCandidates {get;}
+HasAttrs {get;}
+HasBody {get;}
+HasDefaultArg {get;}
+HasElseStorage {get;}
+HasExplicitTemplateArgs {get;}
+Hash {get;}
+HasImplicitReturnZero {get;}
+HasInheritedDefaultArg {get;}
+HasInit {get;}
+HasInitStorage {get;}
+HasLeadingEmptyMacro {get;}
+HasLocalStorage {get;}
+HasPlaceholderTypeConstraint {get;}
+HasTemplateKeyword {get;}
+HasUserDeclaredConstructor {get;}
+HasUserDeclaredCopyAssignment {get;}
+HasUserDeclaredCopyConstructor {get;}
+HasUserDeclaredDestructor {get;}
+HasUserDeclaredMoveAssignment {get;}
+HasUserDeclaredMoveConstructor {get;}
+HasUserDeclaredMoveOperation {get;}
+HasVarDeclExternalStorage {get;}
+HasVarDeclGlobalStorage {get;}
+HasVarStorage {get;}
+IBOutletCollectionType {get;}
+InClassInitializer {get;}
+IncludedFile {get;}
+InheritedConstructor {get;}
+InheritedFromVBase {get;}
+InitExpr {get;}
+InjectedSpecializationType {get;}
+InstantiatedFromMember {get;}
+IntegerLiteralValue {get;}
+IsAllEnumCasesCovered {get;}
+IsAlwaysNull {get;}
+IsAnonymous {get;}
+IsAnonymousRecordDecl {get;}
+IsAnonymousStructOrUnion {get;}
+IsArgumentType {get;}
+IsArrayForm {get;}
+IsArrayFormAsWritten {get;}
+IsArrow {get;}
+IsAttribute {get;}
+IsBitField {get;}
+IsCanonical {get;}
+IsCBuffer {get;}
+IsClassExtension {get;}
+IsCompleteDefinition {get;}
+IsConditionTrue {get;}
+IsConstexpr {get;}
+IsConversionFromLambda {get;}
+IsCopyOrMoveConstructor {get;}
+IsCXXTry {get;}
+IsDeclaration {get;}
+IsDefined {get;}
+IsDefinition {get;}
+IsDelegatingConstructor {get;}
+IsDeleted {get;}
+IsDeprecated {get;}
+IsDynamicCall {get;}
+IsElidable {get;}
+IsExpandedParameterPack {get;}
+IsExplicitlyDefaulted {get;}
+IsExpression {get;}
+IsExternC {get;}
+IsFileScope {get;}
+IsFunctionInlined {get;}
+IsGlobal {get;}
+IsIfExists {get;}
+IsImplicit {get;}
+IsIncomplete {get;}
+IsInheritingConstructor {get;}
+IsInjectedClassName {get;}
+IsInlineNamespace {get;}
+IsInvalid {get;}
+IsInvalidDeclaration {get;}
+IsListInitialization {get;}
+IsLocalVarDecl {get;}
+IsLocalVarDeclOrParm {get;}
+IsMacroBuiltIn {get;}
+IsMacroFunctionLike {get;}
+IsMemberSpecialization {get;}
+IsNegative {get;}
+IsNonNegative {get;}
+IsNoReturn {get;}
+IsNothrow {get;}
+IsNull {get;}
+IsObjCOptional {get;}
+IsOverloadedOperator {get;}
+IsPackExpansion {get;}
+IsParameterPack {get;}
+IsPartiallySubstituted {get;}
+IsPotentiallyEvaluated {get;}
+IsPreprocessing {get;}
+IsPure {get;}
+IsReference {get;}
+IsResultDependent {get;}
+IsSigned {get;}
+IsStatement {get;}
+IsStatic {get;}
+IsStaticDataMember {get;}
+IsStdInitListInitialization {get;}
+IsStrictlyPositive {get;}
+IsTemplated {get;}
+IsThisDeclarationADefinition {get;}
+IsThrownVariableInScope {get;}
+IsTranslationUnit {get;}
+IsTransparent {get;}
+IsTypeConcept {get;}
+IsUnavailable {get;}
+IsUnconditionallyVisible {get;}
+IsUnexposed {get;}
+IsUnnamedBitfield {get;}
+IsUnsigned {get;}
+IsUnsupportedFriend {get;}
+IsUserProvided {get;}
+IsVariadic {get;}
+IsVirtualBase {get;}
+Kind {get;}
+KindSpelling {get;}
+LambdaCallOperator {get;}
+LambdaContextDecl {get;}
+LambdaStaticInvoker {get;}
+Language {get;}
+LexicalParent {get;}
+LhsExpr {get;}
+Linkage {get;}
+Location {get;}
+Mangling {get;}
+MaxAlignment {get;}
+Module {get;}
+MostRecentDecl {get;}
+Name {get;}
+NextDeclInContext {get;}
+NextSwitchCase {get;}
+NominatedBaseClass {get;}
+NominatedBaseClassShadowDecl {get;}
+NonClosureContext {get;}
+Null {get;}
+NumArguments {get;}
+NumAssociatedConstraints {get;}
+NumAssocs {get;}
+NumAttrs {get;}
+NumBases {get;}
+NumBindings {get;}
+NumCaptures {get;}
+NumChildren {get;}
+NumCtors {get;}
+NumDecls {get;}
+NumEnumerators {get;}
+NumExpansionTypes {get;}
+NumExprs {get;}
+NumExprsOther {get;}
+NumFields {get;}
+NumFriends {get;}
+NumMethods {get;}
+NumOverloadedDecls {get;}
+NumProtocols {get;}
+NumSpecializations {get;}
+NumTemplateArguments {get;}
+NumTemplateParameterLists {get;}
+NumVBases {get;}
+ObjCDeclQualifiers {get;}
+ObjCManglings {get;}
+ObjCPropertyGetterName {get;}
+ObjCPropertySetterName {get;}
+ObjCSelectorIndex {get;}
+OffsetOfField {get;}
+OpaqueValue {get;}
+OriginalType {get;}
+OverloadedOperatorKind {get;}
+OverriddenCursors {get;}
+PackLength {get;}
+ParentFunctionOrMethod {get;}
+ParsedComment {get;}
+PlaceholderTypeConstraint {get;}
+PreviousDecl {get;}
+PrimaryTemplate {get;}
+PrintingPolicy {get;}
+RawCommentText {get;}
+ReceiverType {get;}
+RedeclContext {get;}
+Referenced {get;}
+RequiresZeroInitialization {get;}
+ResultIndex {get;}
+ResultType {get;}
+ReturnType {get;}
+RhsExpr {get;}
+SemanticParent {get;}
+ShouldCopy {get;}
+SourceRange {get;}
+SourceRangeRaw {get;}
+SpecializedCursorTemplate {get;}
+Spelling {get;}
+StmtClass {get;}
+StmtClassSpelling {get;}
+StorageClass {get;}
+StringLiteralValue {get;}
+SubExpr {get;}
+SubExprAsWritten {get;}
+SubStmt {get;}
+TargetUnionField {get;}
+TemplateCursorKind {get;}
+TemplatedDecl {get;}
+TemplateInstantiationPattern {get;}
+TemplateSpecializationKind {get;}
+TemplateTypeParmDepth {get;}
+TemplateTypeParmIndex {get;}
+TemplateTypeParmPosition {get;}
+ThisObjectType {get;}
+ThisType {get;}
+TlsKind {get;}
+TrailingRequiresClause {get;}
+TranslationUnit {get;}
+Type {get;}
+TypedefDeclUnderlyingType {get;}
+TypedefNameForAnonDecl {get;}
+TypeOperand {get;}
+UnaryExprOrTypeTraitKind {get;}
+UnaryOperatorKind {get;}
+UnaryOperatorKindSpelling {get;}
+UnderlyingDecl {get;}
+UninstantiatedDefaultArg {get;}
+UsedContext {get;}
+Usr {get;}
+Visibility {get;}
+VtblIdx {get;}
+CapturesVariable(CXCursor)
+DisposeOverriddenCursors(ReadOnlySpan<CXCursor>)
+Equals(object)
+Equals(CXCursor)
+FindReferencesInFile(CXFile, CXCursorAndRangeVisitor)
+GetArgument(uint)
+GetAssociatedConstraint(uint)
+GetAttr(uint)
+GetBase(uint)
+GetBindingDecl(uint)
+GetCaptureCopyExpr(uint)
+GetCapturedVar(uint)
+GetCaptureHasCopyExpr(uint)
+GetCaptureIsByRef(uint)
+GetCaptureIsEscapingByRef(uint)
+GetCaptureIsNested(uint)
+GetCaptureIsNonEscapingByRef(uint)
+GetCaptureKind(uint)
+GetCaptureVariable(uint)
+GetChild(uint)
+GetCtor(uint)
+GetDecl(uint)
+GetDefinitionSpellingAndExtent(scoped out string, scoped out uint, scoped out uint, scoped out uint, scoped out uint)
+GetEnumerator(uint)
+GetExpansionType(uint)
+GetExpr(uint)
+GetField(uint)
+GetFriend(uint)
+GetHashCode()
+GetIsExternalSymbol(scoped out CXString, scoped out CXString, scoped out bool)
+GetMethod(uint)
+GetNumTemplateParameters(uint)
+GetObjCPropertyAttributes(uint)
+GetOverloadedDecl(uint)
+GetPlatformAvailability(scoped out bool, scoped out CXString, scoped out bool, scoped out CXString, Span<CXPlatformAvailability>)
+GetPrettyPrinted(CXPrintingPolicy)
+GetProtocol(uint)
+GetReferenceNameRange(CXNameRefFlags, uint)
+GetSpecialization(uint)
+GetSpellingNameRange(uint, uint)
+GetSubDecl(uint)
+GetTemplateArgument(uint)
+GetTemplateArgumentLoc(uint)
+GetTemplateArgumentType(uint)
+GetTemplateArgumentUnsignedValue(uint)
+GetTemplateArgumentValue(uint)
+GetTemplateParameter(uint, uint)
+GetVBase(uint)
+==(CXCursor, CXCursor)
+!=(CXCursor, CXCursor)
+ToString()
+VisitChildren(CXCursorVisitor, CXClientData)
+VisitChildren(delegate* unmanaged[Cdecl]<CXCursor,CXCursor,void*,CXChildVisitResult>, CXClientData)

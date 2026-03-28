@@ -4,7 +4,7 @@
     <Platform Name="arm64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="InlayIndex/InlayIndex.csproj">
+  <Project Path="InlayIndex/InlayIndex.csproj" Id="75b0daae-f809-425d-b530-915b43e2657c">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>

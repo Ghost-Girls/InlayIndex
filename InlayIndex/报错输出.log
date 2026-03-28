@@ -1,0 +1,12 @@
+严重性	代码	说明	项目	文件	行	抑制状态	详细信息
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	166		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	271		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	301		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	330		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	359		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	417		
+错误(活动)	CS1503	参数 1: 无法从“void*”转换为“ClangSharp.Interop.CXClientData”	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	479		
+错误(活动)	CS1061	“void*”未包含“IsValid”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“IsValid”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	430		
+错误(活动)	CS1061	“void*”未包含“Dispose”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“Dispose”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	442		
+错误(活动)	CS1061	“void*”未包含“AsLongLong”的定义，并且找不到可接受第一个“void*”类型参数的可访问扩展方法“AsLongLong”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	432		
+错误(活动)	CS1061	“CXClientData”未包含“Data”的定义，并且找不到可接受第一个“CXClientData”类型参数的可访问扩展方法“Data”(是否缺少 using 指令或程序集引用?)	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Parser\ClangParser.cs	28		

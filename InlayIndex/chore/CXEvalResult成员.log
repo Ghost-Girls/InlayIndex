@@ -1,0 +1,18 @@
+AsDouble {get;}
+AsInt {get;}
+AsLongLong {get;}
+AsStr {get;}
+AsUnsigned {get;}
+Handle {readonly get;set;}
+IsUnsignedInt {get;}
+Kind {get;}
+CXEvalResult(IntPtr)
+Dispose()
+Equals(CXEvalResult)
+Equals(object)
+GetHashCode()
+==(CXEvalResult, CXEvalResult)
+explicit CXEvalResult(void*)
+implicit void*(CXEvalResult)
+!=(CXEvalResult, CXEvalResult)
+<Handle>k__BackingField

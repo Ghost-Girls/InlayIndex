@@ -1,0 +1,44 @@
+using System.Collections.Generic;
+
+namespace InlayIndex.Models
+{
+    public enum ArrayDimension
+    {
+        Dim1 = 1,
+        Dim2 = 2,
+        Dim3 = 3,
+        Dim4 = 4
+    }
+
+    public class ArrayElement
+    {
+        public int[] Indices { get; set; }
+        public string Value { get; set; }
+        public int StartPosition { get; set; }
+        public int EndPosition { get; set; }
+        public bool IsStruct { get; set; }
+        public List<StructField> Fields { get; set; }
+    }
+
+    public class StructField
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+        public int StartPosition { get; set; }
+        public int EndPosition { get; set; }
+        public List<StructField> NestedFields { get; set; }
+    }
+
+    public class ArrayInfo
+    {
+        public string Name { get; set; }
+        public string TypeName { get; set; }
+        public ArrayDimension Dimensions { get; set; }
+        public int[] DimensionSizes { get; set; }
+        public List<ArrayElement> Elements { get; set; }
+        public int DeclarationStart { get; set; }
+        public int DeclarationEnd { get; set; }
+        public bool IsStructArray { get; set; }
+        public string StructTypeName { get; set; }
+    }
+}

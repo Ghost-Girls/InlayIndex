@@ -1,0 +1,17 @@
+_ptr_data_e__FixedBuffer
+int_data
+ptr_data
+IsFromMainFile {get;}
+IsInSystemHeader {get;}
+Null {get;}
+Equals(object)
+Equals(CXSourceLocation)
+GetExpansionLocation(scoped out CXFile, scoped out uint, scoped out uint, scoped out uint)
+GetFileLocation(scoped out CXFile, scoped out uint, scoped out uint, scoped out uint)
+GetHashCode()
+GetInstantiationLocation(scoped out CXFile, scoped out uint, scoped out uint, scoped out uint)
+GetPresumedLocation(scoped out CXString, scoped out uint, scoped out uint)
+GetSpellingLocation(scoped out CXFile, scoped out uint, scoped out uint, scoped out uint)
+==(CXSourceLocation, CXSourceLocation)
+!=(CXSourceLocation, CXSourceLocation)
+ToString()
