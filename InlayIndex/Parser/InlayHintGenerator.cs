@@ -25,7 +25,7 @@ namespace InlayIndex.Parser
             if (_options.EnableArrayIndex)
             {
                 LogHelper.WriteTagInfo("生成数组索引标签...");
-                tags.AddRange(GenerateArrayIndexTags(parseResult.Arrays));
+                tags.AddRange(GenerateArrayIndexTags(parseResult));
             }
 
             if (_options.EnableEnumValue)
@@ -44,12 +44,12 @@ namespace InlayIndex.Parser
             return tags;
         }
 
-        private List<InlayHintTag> GenerateArrayIndexTags(List<ArrayInfo> arrays)
+        private List<InlayHintTag> GenerateArrayIndexTags(ParseResult parseResult)
         {
             var tags = new List<InlayHintTag>();
-            LogHelper.WriteDebug($"处理 {arrays.Count} 个数组");
+            LogHelper.WriteDebug($"处理 {parseResult.Arrays.Count} 个数组");
 
-            foreach (var array in arrays)
+            foreach (var array in parseResult.Arrays)
             {
                 LogHelper.WriteDebug($"处理数组：{array.Name}, 维度：{array.Dimensions}, 元素数：{array.Elements.Count}");
 
@@ -68,7 +68,7 @@ namespace InlayIndex.Parser
                 if (array.IsStructArray && _options.EnableStructField)
                 {
                     LogHelper.WriteDebug($"生成结构体数组标签：{array.Name}");
-                    tags.AddRange(GenerateStructArrayTags(array));
+                    tags.AddRange(GenerateStructArrayTags(array, parseResult.Structs));
                 }
                 else
                 {
@@ -138,78 +138,142 @@ namespace InlayIndex.Parser
             return tags;
         }
 
-        private List<InlayHintTag> GenerateStructArrayTags(ArrayInfo array)
+        private List<InlayHintTag> GenerateStructArrayTags(ArrayInfo array, List<StructInfo> structs)
         {
             var tags = new List<InlayHintTag>();
-            var structElements = new Dictionary<int, List<ArrayElement>>();
 
-            foreach (var element in array.Elements)
+            // 首先，生成外层初始化列表的标签
+            foreach (var initList in array.InitLists)
             {
-                if (element.Indices.Length == (int)array.Dimensions - 1)
+                string indexText;
+                if (_options.IndexDisplayMode == Options.IndexDisplayMode.Full)
                 {
-                    var structIndex = element.Indices[element.Indices.Length - 1];
-                    if (!structElements.ContainsKey(structIndex))
-                    {
-                        structElements[structIndex] = new List<ArrayElement>();
-                    }
-                    structElements[structIndex].Add(element);
+                    // 完整索引模式：显示完整的多维索引
+                    indexText = BuildIndexText(initList.Indices);
                 }
+                else
+                {
+                    // 简洁索引模式：只显示当前维度的最后一个索引
+                    indexText = $"[{initList.Indices[initList.Indices.Length - 1]}]";
+                }
+
+                var initListTag = new InlayHintTag
+                {
+                    Text = $"{indexText}:",
+                    StartPosition = initList.StartPosition,
+                    EndPosition = initList.StartPosition,
+                    Type = InlayHintType.ArrayIndex,
+                    ForegroundColor = _options.GetForegroundColor(),
+                    FontSize = _options.FontSize,
+                    FontWeight = _options.GetFontWeight(),
+                    BackgroundOpacity = _options.BackgroundOpacity
+                };
+
+                tags.Add(initListTag);
             }
 
-            foreach (var kvp in structElements)
+            // 确定每个结构体有多少个字段
+            int fieldsPerStruct = 0;
+            StructInfo targetStructInfo = null;
+            
+            // 首先找到对应的结构体信息
+            if (array.StructInfo != null)
             {
-                var structIndex = kvp.Key;
-                var elements = kvp.Value;
-
-                if (elements.Count > 0)
+                targetStructInfo = array.StructInfo;
+                fieldsPerStruct = targetStructInfo.Fields.Count;
+            }
+            else if (!string.IsNullOrEmpty(array.StructTypeName))
+            {
+                string cleanTypeName = array.StructTypeName.StartsWith("struct ") ? 
+                    array.StructTypeName.Substring("struct ".Length) : 
+                    array.StructTypeName;
+                
+                foreach (var structInfo in structs)
                 {
-                    var firstElement = elements[0];
-                    var indexText = $"[{structIndex}]";
-
-                    var tag = new InlayHintTag
+                    if (structInfo.Name == cleanTypeName)
                     {
-                        Text = $"{indexText}:",
-                        StartPosition = firstElement.StartPosition,
-                        EndPosition = firstElement.StartPosition,
-                        Type = InlayHintType.ArrayIndex,
+                        targetStructInfo = structInfo;
+                        fieldsPerStruct = targetStructInfo.Fields.Count;
+                        break;
+                    }
+                }
+            }
+            
+            // 如果找不到结构体信息，就不生成字段标签
+            if (fieldsPerStruct == 0)
+            {
+                LogHelper.WriteDebug($"找不到结构体信息，不生成字段标签：{array.Name}");
+                return tags;
+            }
+
+            // 生成结构体内部字段的标签
+            if (_options.EnableStructField)
+            {
+                // 按顺序分组：每 fieldsPerStruct 个元素一组
+                for (int i = 0; i < array.Elements.Count; i++)
+                {
+                    var element = array.Elements[i];
+                    int fieldIndex = i % fieldsPerStruct;
+                    
+                    string fieldName;
+                    if (targetStructInfo != null && fieldIndex < targetStructInfo.Fields.Count)
+                    {
+                        fieldName = targetStructInfo.Fields[fieldIndex].Name;
+                    }
+                    else
+                    {
+                        fieldName = $"field{fieldIndex}";
+                    }
+
+                    var fieldTag = new InlayHintTag
+                    {
+                        Text = $".{fieldName}:",
+                        StartPosition = element.StartPosition,
+                        EndPosition = element.StartPosition,
+                        Type = InlayHintType.StructField,
                         ForegroundColor = _options.GetForegroundColor(),
                         FontSize = _options.FontSize,
                         FontWeight = _options.GetFontWeight(),
                         BackgroundOpacity = _options.BackgroundOpacity
                     };
 
-                    tags.Add(tag);
-
-                    if (_options.EnableStructField)
-                    {
-                        for (int i = 0; i < elements.Count; i++)
-                        {
-                            var element = elements[i];
-                            var fieldName = GetFieldNameByIndex(array, i);
-
-                            var fieldTag = new InlayHintTag
-                            {
-                                Text = $".{fieldName}:",
-                                StartPosition = element.StartPosition,
-                                EndPosition = element.StartPosition,
-                                Type = InlayHintType.StructField,
-                                ForegroundColor = _options.GetForegroundColor(),
-                                FontSize = _options.FontSize,
-                                FontWeight = _options.GetFontWeight(),
-                                BackgroundOpacity = _options.BackgroundOpacity
-                            };
-
-                            tags.Add(fieldTag);
-                        }
-                    }
+                    tags.Add(fieldTag);
                 }
             }
 
             return tags;
         }
 
-        private string GetFieldNameByIndex(ArrayInfo array, int index)
+        private string GetFieldNameByIndex(ArrayInfo array, List<StructInfo> structs, int index)
         {
+            // 首先尝试从 array.StructInfo 中查找（如果已关联）
+            if (array.StructInfo != null && index < array.StructInfo.Fields.Count)
+            {
+                return array.StructInfo.Fields[index].Name;
+            }
+            
+            // 否则，从 structs 列表中查找匹配的结构体
+            if (!string.IsNullOrEmpty(array.StructTypeName))
+            {
+                // 移除可能的 "struct " 前缀
+                string cleanTypeName = array.StructTypeName.StartsWith("struct ") ? 
+                    array.StructTypeName.Substring("struct ".Length) : 
+                    array.StructTypeName;
+                
+                foreach (var structInfo in structs)
+                {
+                    if (structInfo.Name == cleanTypeName)
+                    {
+                        if (index < structInfo.Fields.Count)
+                        {
+                            return structInfo.Fields[index].Name;
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // 如果找不到，使用默认名称
             return $"field{index}";
         }
 

@@ -239,7 +239,39 @@ namespace InlayIndex.Parser
             {
                 clientData.Free();
             }
+            
+            LogHelper.WriteDebug($"准备关联结构体数组和结构体信息，数组数：{result.Arrays.Count}, 结构体数：{result.Structs.Count}");
+            
+            // 在所有解析完成后，关联结构体数组和对应的结构体信息
+            LinkStructArraysWithStructs(result);
+            
             LogHelper.WriteDebug("AST 遍历完成");
+        }
+        
+        private void LinkStructArraysWithStructs(ParseResult result)
+        {
+            foreach (var arrayInfo in result.Arrays)
+            {
+                if (arrayInfo.IsStructArray && !string.IsNullOrEmpty(arrayInfo.StructTypeName))
+                {
+                    LogHelper.WriteDebug($"尝试关联结构体数组：{arrayInfo.Name}, StructTypeName={arrayInfo.StructTypeName}");
+                    foreach (var structInfo in result.Structs)
+                    {
+                        LogHelper.WriteDebug($"  比较结构体：{structInfo.Name}");
+                        // 移除可能的 "struct " 前缀进行比较
+                        string cleanTypeName = arrayInfo.StructTypeName.StartsWith("struct ") ? 
+                            arrayInfo.StructTypeName.Substring("struct ".Length) : 
+                            arrayInfo.StructTypeName;
+                        
+                        if (structInfo.Name == cleanTypeName)
+                        {
+                            arrayInfo.StructInfo = structInfo;
+                            LogHelper.WriteDebug($"关联结构体信息到数组：{arrayInfo.Name} -> {structInfo.Name}, 字段数：{structInfo.Fields.Count}");
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         private void HandleVariableDeclaration(CXCursor cursor, ParseResult result)
@@ -465,7 +497,7 @@ namespace InlayIndex.Parser
 
                 LogHelper.WriteDebug($"ExtractArrayElements - 收集到 {tempElements.Count} 个元素");
                 // 为所有元素分配正确的索引，考虑嵌套打断效果
-                AssignSmartIndices(tempElements, arrayInfo.DimensionSizes, arrayInfo);
+                AssignSmartIndices(tempElements, arrayInfo.DimensionSizes, arrayInfo, arrayInfo.IsStructArray);
             }
         }
 
@@ -583,7 +615,7 @@ namespace InlayIndex.Parser
             }
         }
 
-        private void AssignSmartIndices(List<ArrayElement> elements, int[] dimensionSizes, ArrayInfo arrayInfo)
+        private void AssignSmartIndices(List<ArrayElement> elements, int[] dimensionSizes, ArrayInfo arrayInfo, bool isStructArray = false)
         {
             int[] currentIndices = new int[dimensionSizes.Length];
             int lastNestingDepth = -1;
@@ -594,15 +626,15 @@ namespace InlayIndex.Parser
             {
                 var element = elements[i];
                 
-                // 如果索引已经无效，就跳过所有后续元素
-                if (!indicesValid)
+                // 如果不是结构体数组且索引已经无效，就跳过所有后续元素
+                if (!isStructArray && !indicesValid)
                 {
                     LogHelper.WriteDebug($"跳过元素（索引已无效）- 值：{element.Value}, 位置：{element.StartPosition}");
                     continue;
                 }
                 
-                // 检查是否超出数组大小
-                if (!IsIndexValid(currentIndices, dimensionSizes))
+                // 只有非结构体数组才检查是否超出数组大小
+                if (!isStructArray && !IsIndexValid(currentIndices, dimensionSizes))
                 {
                     LogHelper.WriteDebug($"跳过超出数组大小的元素 - 值：{element.Value}, 位置：{element.StartPosition}");
                     indicesValid = false;
@@ -622,8 +654,17 @@ namespace InlayIndex.Parser
                 arrayInfo.Elements.Add(element);
                 LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", element.Indices)}], 值：{element.Value}, 位置：{element.StartPosition}, 嵌套深度：{element.NestingDepth}");
 
-                // 递增索引并检查是否有效
-                indicesValid = IncrementIndices(currentIndices, dimensionSizes);
+                // 递增索引（对于结构体数组，我们不检查是否有效）
+                if (isStructArray)
+                {
+                    // 对于结构体数组，正常递增索引，但允许索引超出（用于后续处理）
+                    IncrementIndices(currentIndices, dimensionSizes);
+                }
+                else
+                {
+                    // 对于普通数组，递增索引并检查是否有效
+                    indicesValid = IncrementIndices(currentIndices, dimensionSizes);
+                }
                 
                 // 更新上一个嵌套深度
                 lastNestingDepth = element.NestingDepth;

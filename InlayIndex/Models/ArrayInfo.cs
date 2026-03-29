@@ -51,5 +51,6 @@ namespace InlayIndex.Models
         public int DeclarationEnd { get; set; }
         public bool IsStructArray { get; set; }
         public string StructTypeName { get; set; }
+        public StructInfo StructInfo { get; set; }
     }
 }
