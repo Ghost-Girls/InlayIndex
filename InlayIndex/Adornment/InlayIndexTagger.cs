@@ -153,13 +153,20 @@ namespace InlayIndex.Adornment
                 FontSize = hintTag.FontSize,
                 FontWeight = hintTag.FontWeight,
                 Foreground = new SolidColorBrush(hintTag.ForegroundColor.Value),
-                Background = CreateBackgroundBrush(hintTag),
-                Padding = new System.Windows.Thickness(2, 0, 2, 0),
-                Margin = new System.Windows.Thickness(1, 0, 1, 2.5),
-                //VerticalAlignment = System.Windows.VerticalAlignment.Center
+                Padding = new System.Windows.Thickness(2, 0, 2, 1.25),
+                TextAlignment = System.Windows.TextAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
             };
 
-            return textBlock;
+            var border = new System.Windows.Controls.Border
+            {
+                Child = textBlock,
+                Background = CreateBackgroundBrush(hintTag),
+                CornerRadius = new System.Windows.CornerRadius(3),
+                Margin = new System.Windows.Thickness(1, 0, 1, 2.5)
+            };
+
+            return border;
         }
 
         private System.Windows.Media.Brush CreateBackgroundBrush(Models.InlayHintTag hintTag)

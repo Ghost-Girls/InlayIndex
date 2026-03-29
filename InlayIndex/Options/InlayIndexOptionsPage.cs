@@ -25,7 +25,7 @@ namespace InlayIndex.Options
         private bool enableEnumValue = true;
         private bool enableStructField = true;
         private ColorTheme selectedTheme = ColorTheme.Orange;
-        private double fontSize = 11;
+        private double fontSize = 7;
         private FontWeight fontWeight = FontWeights.Bold;
         private double backgroundOpacity = 15;
         private int maxDimensions = 4;
@@ -78,7 +78,7 @@ namespace InlayIndex.Options
         public double FontSize
         {
             get => fontSize;
-            set => fontSize = System.Math.Max(9, System.Math.Min(14, value));
+            set => fontSize = System.Math.Max(5, System.Math.Min(12, value));
         }
 
         [Category("样式配置")]
