@@ -84,10 +84,34 @@ namespace InlayIndex.Parser
         private List<InlayHintTag> GenerateSimpleArrayTags(ArrayInfo array)
         {
             var tags = new List<InlayHintTag>();
+            var positionCounts = new Dictionary<int, int>();
 
-            // 生成外层初始化列表的标签
+            // 第一遍：统计每个位置的出现次数
             foreach (var initList in array.InitLists)
             {
+                if (!positionCounts.ContainsKey(initList.StartPosition))
+                {
+                    positionCounts[initList.StartPosition] = 0;
+                }
+                positionCounts[initList.StartPosition]++;
+            }
+            foreach (var element in array.Elements)
+            {
+                if (!positionCounts.ContainsKey(element.StartPosition))
+                {
+                    positionCounts[element.StartPosition] = 0;
+                }
+                positionCounts[element.StartPosition]++;
+            }
+
+            // 第二遍：只生成出现次数为1的标签
+            foreach (var initList in array.InitLists)
+            {
+                if (positionCounts[initList.StartPosition] != 1)
+                {
+                    continue;
+                }
+                
                 string indexText;
                 if (_options.IndexDisplayMode == Options.IndexDisplayMode.Full)
                 {
@@ -118,6 +142,11 @@ namespace InlayIndex.Parser
             // 生成数组元素的标签
             foreach (var element in array.Elements)
             {
+                if (positionCounts[element.StartPosition] != 1)
+                {
+                    continue;
+                }
+                
                 var indexText = BuildIndexText(element.Indices);
 
                 var tag = new InlayHintTag
@@ -141,10 +170,34 @@ namespace InlayIndex.Parser
         private List<InlayHintTag> GenerateStructArrayTags(ArrayInfo array, List<StructInfo> structs)
         {
             var tags = new List<InlayHintTag>();
+            var positionCounts = new Dictionary<int, int>();
+
+            // 第一遍：统计每个位置的出现次数
+            foreach (var initList in array.InitLists)
+            {
+                if (!positionCounts.ContainsKey(initList.StartPosition))
+                {
+                    positionCounts[initList.StartPosition] = 0;
+                }
+                positionCounts[initList.StartPosition]++;
+            }
+            foreach (var element in array.Elements)
+            {
+                if (!positionCounts.ContainsKey(element.StartPosition))
+                {
+                    positionCounts[element.StartPosition] = 0;
+                }
+                positionCounts[element.StartPosition]++;
+            }
 
             // 首先，生成外层初始化列表的标签
             foreach (var initList in array.InitLists)
             {
+                if (positionCounts[initList.StartPosition] != 1)
+                {
+                    continue;
+                }
+                
                 string indexText;
                 if (_options.IndexDisplayMode == Options.IndexDisplayMode.Full)
                 {
@@ -213,6 +266,12 @@ namespace InlayIndex.Parser
                 for (int i = 0; i < array.Elements.Count; i++)
                 {
                     var element = array.Elements[i];
+                    
+                    if (positionCounts[element.StartPosition] != 1)
+                    {
+                        continue;
+                    }
+                    
                     int fieldIndex = i % fieldsPerStruct;
                     
                     string fieldName;

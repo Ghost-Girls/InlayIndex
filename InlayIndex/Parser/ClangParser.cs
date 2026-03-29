@@ -202,6 +202,18 @@ namespace InlayIndex.Parser
         private void VisitChildren(CXCursor cursor, ParseResult result)
         {
             LogHelper.WriteDebug($"开始遍历 AST 节点，根节点：{cursor.Kind}");
+            VisitChildrenRecursive(cursor, result);
+            
+            LogHelper.WriteDebug($"准备关联结构体数组和结构体信息，数组数：{result.Arrays.Count}, 结构体数：{result.Structs.Count}");
+            
+            // 在所有解析完成后，关联结构体数组和对应的结构体信息
+            LinkStructArraysWithStructs(result);
+            
+            LogHelper.WriteDebug("AST 遍历完成");
+        }
+        
+        private void VisitChildrenRecursive(CXCursor cursor, ParseResult result)
+        {
             var clientData = GCHandle.Alloc(result);
             try
             {
@@ -230,6 +242,9 @@ namespace InlayIndex.Parser
                                 break;
                         }
 
+                        // 递归处理当前节点的子节点
+                        VisitChildrenRecursive(c, res);
+
                         return CXChildVisitResult.CXChildVisit_Continue;
                     };
                     cursor.VisitChildren(visitor, ToClientData(clientData));
@@ -239,13 +254,6 @@ namespace InlayIndex.Parser
             {
                 clientData.Free();
             }
-            
-            LogHelper.WriteDebug($"准备关联结构体数组和结构体信息，数组数：{result.Arrays.Count}, 结构体数：{result.Structs.Count}");
-            
-            // 在所有解析完成后，关联结构体数组和对应的结构体信息
-            LinkStructArraysWithStructs(result);
-            
-            LogHelper.WriteDebug("AST 遍历完成");
         }
         
         private void LinkStructArraysWithStructs(ParseResult result)

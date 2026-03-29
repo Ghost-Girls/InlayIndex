@@ -155,7 +155,8 @@ namespace InlayIndex.Adornment
                 Foreground = new SolidColorBrush(hintTag.ForegroundColor.Value),
                 Background = CreateBackgroundBrush(hintTag),
                 Padding = new System.Windows.Thickness(2, 0, 2, 0),
-                Margin = new System.Windows.Thickness(1, 0, 1, 0)
+                Margin = new System.Windows.Thickness(1, 0, 1, 2.5),
+                //VerticalAlignment = System.Windows.VerticalAlignment.Center
             };
 
             return textBlock;
