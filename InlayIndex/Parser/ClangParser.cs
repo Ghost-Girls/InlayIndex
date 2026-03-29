@@ -335,13 +335,33 @@ namespace InlayIndex.Parser
                 elementType = elementType.ArrayElementType;
             }
             
-            // 检查元素类型是否是记录类型（结构体/类/联合）
+            // 检查元素类型是否是记录类型（结构体/类/联合），排除枚举
             if (elementType.kind == CXTypeKind.CXType_Record ||
                 elementType.kind == CXTypeKind.CXType_Elaborated)
             {
-                arrayInfo.IsStructArray = true;
-                arrayInfo.StructTypeName = elementType.Spelling.CString;
-                LogHelper.WriteDebug($"识别到结构体数组：{arrayInfo.Name}, 元素类型：{arrayInfo.StructTypeName}");
+                // 对于 Elaborated 类型，需要进一步检查它是否是枚举
+                bool isEnum = false;
+                if (elementType.kind == CXTypeKind.CXType_Elaborated)
+                {
+                    // 获取 Elaborated 类型的实际类型
+                    var namedType = elementType.NamedType;
+                    if (namedType.kind == CXTypeKind.CXType_Enum)
+                    {
+                        isEnum = true;
+                    }
+                }
+                
+                // 如果不是枚举，才认为是结构体数组
+                if (!isEnum)
+                {
+                    arrayInfo.IsStructArray = true;
+                    arrayInfo.StructTypeName = elementType.Spelling.CString;
+                    LogHelper.WriteDebug($"识别到结构体数组：{arrayInfo.Name}, 元素类型：{arrayInfo.StructTypeName}");
+                }
+                else
+                {
+                    LogHelper.WriteDebug($"识别到枚举数组：{arrayInfo.Name}, 元素类型：{elementType.Spelling.CString}");
+                }
             }
             
             // 收集数组维度信息
