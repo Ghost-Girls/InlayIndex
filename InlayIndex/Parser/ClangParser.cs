@@ -365,31 +365,60 @@ namespace InlayIndex.Parser
                 }
             }
 
-            var arrayState = new VisitState<ArrayInfo>(arrayInfo);
-            var arrayClientData = GCHandle.Alloc(arrayState);
+            LogHelper.WriteDebug($"ExtractArrayInfo - 开始查找 InitListExpr，数组：{arrayInfo.Name}");
+            CXCursor? foundInitList = FindInitListExprRecursive(cursor, arrayInfo.Name);
+            if (foundInitList.HasValue)
+            {
+                LogHelper.WriteDebug($"ExtractArrayInfo - 找到 InitListExpr，数组：{arrayInfo.Name}");
+                ExtractArrayElements(foundInitList.Value, arrayInfo, dimensions.Count, new int[] { });
+            }
+
+            return arrayInfo;
+        }
+
+        private CXCursor? FindInitListExprRecursive(CXCursor cursor, string arrayName)
+        {
+            CXCursor? result = null;
+            var state = new VisitState<CXCursor?>(null);
+            var clientData = GCHandle.Alloc(state);
             try
             {
                 unsafe
                 {
-                    CXCursorVisitor arrayVisitor = (child, parent, data) =>
+                    CXCursorVisitor visitor = (child, parent, data) =>
                     {
-                        var state = FromClientData<VisitState<ArrayInfo>>(data);
-                        if (state != null && child.Kind == CXCursorKind.CXCursor_InitListExpr)
+                        var s = FromClientData<VisitState<CXCursor?>>(data);
+                        LogHelper.WriteDebug($"FindInitListExprRecursive - 发现子节点：{child.Kind}, 数组：{arrayName}");
+                        
+                        if (s != null)
                         {
-                            ExtractArrayElements(child, state.Value, dimensions.Count, new int[] { });
-                            return CXChildVisitResult.CXChildVisit_Break;
+                            if (child.Kind == CXCursorKind.CXCursor_InitListExpr)
+                            {
+                                s.Value = child;
+                                return CXChildVisitResult.CXChildVisit_Break;
+                            }
+                            else if (child.Kind == CXCursorKind.CXCursor_UnexposedExpr)
+                            {
+                                // 递归搜索 UnexposedExpr 的子节点
+                                var nestedResult = FindInitListExprRecursive(child, arrayName);
+                                if (nestedResult.HasValue)
+                                {
+                                    s.Value = nestedResult.Value;
+                                    return CXChildVisitResult.CXChildVisit_Break;
+                                }
+                            }
                         }
                         return CXChildVisitResult.CXChildVisit_Continue;
                     };
-                    cursor.VisitChildren(arrayVisitor, ToClientData(arrayClientData));
+                    cursor.VisitChildren(visitor, ToClientData(clientData));
                 }
+                result = state.Value;
             }
             finally
             {
-                arrayClientData.Free();
+                clientData.Free();
             }
-
-            return arrayInfo;
+            return result;
         }
 
         private int CountInitListElements(CXCursor cursor)
@@ -418,30 +447,29 @@ namespace InlayIndex.Parser
 
         private void ExtractArrayElements(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices)
         {
+            LogHelper.WriteDebug($"ExtractArrayElements - 数组：{arrayInfo.Name}, 维度：{dimension}, 当前索引长度：{currentIndices.Length}");
+            
             if (dimension == 0)
             {
+                LogHelper.WriteDebug($"ExtractArrayElements - 维度为0，返回");
                 return;
             }
 
             // 临时列表用于收集所有元素（不带索引）
             if (currentIndices.Length == 0)
             {
+                LogHelper.WriteDebug($"ExtractArrayElements - 根层级，开始收集元素");
                 // 只有在根层级才进行元素收集和统一索引分配
                 var tempElements = new List<ArrayElement>();
-                CollectArrayElementsAndInitLists(cursor, arrayInfo, dimension, currentIndices, tempElements);
+                CollectArrayElementsAndInitLists(cursor, arrayInfo, dimension, currentIndices, tempElements, 0);
 
-                // 为所有元素分配正确的索引
-                for (int i = 0; i < tempElements.Count; i++)
-                {
-                    var element = tempElements[i];
-                    element.Indices = CalculateFlatIndices(new int[] { }, i, arrayInfo.DimensionSizes);
-                    arrayInfo.Elements.Add(element);
-                    LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", element.Indices)}], 值：{element.Value}, 位置：{element.StartPosition}");
-                }
+                LogHelper.WriteDebug($"ExtractArrayElements - 收集到 {tempElements.Count} 个元素");
+                // 为所有元素分配正确的索引，考虑嵌套打断效果
+                AssignSmartIndices(tempElements, arrayInfo.DimensionSizes, arrayInfo);
             }
         }
 
-        private void CollectArrayElementsAndInitLists(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, List<ArrayElement> tempElements)
+        private void CollectArrayElementsAndInitLists(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, List<ArrayElement> tempElements, int nestingDepth)
         {
             // 先记录当前初始化列表的位置（仅当不是最内层时）
             if (currentIndices.Length > 0)
@@ -481,7 +509,8 @@ namespace InlayIndex.Parser
                 LogHelper.WriteDebug($"提取初始化列表 - 索引：[{string.Join("][", currentIndices)}], 原始位置：{searchStart}, 最终位置：{finalPosition}");
             }
 
-            var state = new ArrayElementsState(0, arrayInfo, dimension, currentIndices);
+            // 简化的访问器 - 只收集元素和嵌套深度
+            var state = new VisitState<int>(0);
             var clientData = GCHandle.Alloc(state);
             try
             {
@@ -489,22 +518,23 @@ namespace InlayIndex.Parser
                 {
                     CXCursorVisitor visitor = (child, parent, data) =>
                     {
-                        var s = FromClientData<ArrayElementsState>(data);
+                        var s = FromClientData<VisitState<int>>(data);
                         if (s == null) return CXChildVisitResult.CXChildVisit_Continue;
                         
                         if (child.Kind == CXCursorKind.CXCursor_InitListExpr)
                         {
-                            var newIndices = new int[s.CurrentIndices.Length + 1];
-                            Array.Copy(s.CurrentIndices, newIndices, s.CurrentIndices.Length);
-                            newIndices[s.CurrentIndices.Length] = s.ChildIndex;
-
-                            // 递归处理嵌套初始化列表
-                            CollectArrayElementsAndInitLists(child, s.ArrayInfo, s.Dimension - 1, newIndices, tempElements);
-                            s.ChildIndex++;
+                            // 对于初始化列表，我们需要构建 newIndices 来记录初始化列表的位置，但这只是用于 InitListInfo，不影响元素收集
+                            var newIndices = new int[currentIndices.Length + 1];
+                            Array.Copy(currentIndices, newIndices, currentIndices.Length);
+                            newIndices[currentIndices.Length] = s.Value;
+                            
+                            // 递归处理嵌套初始化列表，增加嵌套深度
+                            CollectArrayElementsAndInitLists(child, arrayInfo, dimension, newIndices, tempElements, nestingDepth + 1);
+                            s.Value++;
                         }
                         else if (tempElements != null)
                         {
-                            // 处理元素 - 只在根层级提供的 tempElements 中收集
+                            // 处理元素 - 收集到 tempElements 中
                             uint offset = GetOffset(child.Location);
                             int adjustedOffset = (int)offset;
                             
@@ -533,11 +563,13 @@ namespace InlayIndex.Parser
                                 Indices = new int[] { }, // 稍后分配
                                 StartPosition = adjustedOffset,
                                 EndPosition = adjustedOffset,
-                                Value = child.ToString()
+                                Value = child.ToString(),
+                                NestingDepth = nestingDepth // 记录嵌套深度
                             };
                             
                             tempElements.Add(element);
-                            s.ChildIndex++;
+                            LogHelper.WriteDebug($"收集元素 - 值：{element.Value}, 位置：{element.StartPosition}, 嵌套深度：{element.NestingDepth}");
+                            s.Value++;
                         }
 
                         return CXChildVisitResult.CXChildVisit_Continue;
@@ -549,6 +581,99 @@ namespace InlayIndex.Parser
             {
                 clientData.Free();
             }
+        }
+
+        private void AssignSmartIndices(List<ArrayElement> elements, int[] dimensionSizes, ArrayInfo arrayInfo)
+        {
+            int[] currentIndices = new int[dimensionSizes.Length];
+            int lastNestingDepth = -1;
+            bool wasInNested = false;
+            bool indicesValid = true; // 标记索引是否仍然有效
+
+            for (int i = 0; i < elements.Count; i++)
+            {
+                var element = elements[i];
+                
+                // 如果索引已经无效，就跳过所有后续元素
+                if (!indicesValid)
+                {
+                    LogHelper.WriteDebug($"跳过元素（索引已无效）- 值：{element.Value}, 位置：{element.StartPosition}");
+                    continue;
+                }
+                
+                // 检查是否超出数组大小
+                if (!IsIndexValid(currentIndices, dimensionSizes))
+                {
+                    LogHelper.WriteDebug($"跳过超出数组大小的元素 - 值：{element.Value}, 位置：{element.StartPosition}");
+                    indicesValid = false;
+                    continue;
+                }
+
+                // 检查嵌套深度变化 - 如果从嵌套中出来，需要重置到更高维度
+                if (lastNestingDepth >= 0 && element.NestingDepth < lastNestingDepth)
+                {
+                    // 从嵌套出来了，重置当前维度索引
+                    ResetIndicesAfterNesting(currentIndices, element.NestingDepth, dimensionSizes);
+                    wasInNested = true;
+                }
+
+                // 分配当前索引
+                element.Indices = (int[])currentIndices.Clone();
+                arrayInfo.Elements.Add(element);
+                LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", element.Indices)}], 值：{element.Value}, 位置：{element.StartPosition}, 嵌套深度：{element.NestingDepth}");
+
+                // 递增索引并检查是否有效
+                indicesValid = IncrementIndices(currentIndices, dimensionSizes);
+                
+                // 更新上一个嵌套深度
+                lastNestingDepth = element.NestingDepth;
+            }
+        }
+
+        private bool IsIndexValid(int[] indices, int[] dimensionSizes)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                if (indices[i] >= dimensionSizes[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void ResetIndicesAfterNesting(int[] indices, int targetDepth, int[] dimensionSizes)
+        {
+            // 从 targetDepth + 1 的维度开始递增
+            int startDimension = targetDepth;
+            if (startDimension >= 0 && startDimension < indices.Length)
+            {
+                // 递增当前维度
+                indices[startDimension]++;
+                
+                // 重置更低的维度为0
+                for (int i = startDimension + 1; i < indices.Length; i++)
+                {
+                    indices[i] = 0;
+                }
+            }
+        }
+
+        private bool IncrementIndices(int[] indices, int[] dimensionSizes)
+        {
+            // 从最内层开始递增
+            for (int i = indices.Length - 1; i >= 0; i--)
+            {
+                indices[i]++;
+                if (indices[i] < dimensionSizes[i])
+                {
+                    return true; // 成功递增，索引有效
+                }
+                // 超出当前维度，进位
+                indices[i] = 0;
+            }
+            // 所有维度都溢出了，索引无效
+            return false;
         }
 
         private int[] CalculateFlatIndices(int[] baseIndices, int elementIndex, int[] dimensionSizes)

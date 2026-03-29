@@ -18,6 +18,9 @@ namespace InlayIndex.Models
         public int EndPosition { get; set; }
         public bool IsStruct { get; set; }
         public List<StructField> Fields { get; set; }
+        
+        // 临时字段：用于存储元素所在的嵌套层级深度（收集元素时使用）
+        public int NestingDepth { get; set; }
     }
 
     public class StructField
