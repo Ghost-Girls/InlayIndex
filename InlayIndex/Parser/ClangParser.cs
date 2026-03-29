@@ -423,7 +423,27 @@ namespace InlayIndex.Parser
                 return;
             }
 
-            // 记录当前初始化列表的位置（仅当不是最内层时）
+            // 临时列表用于收集所有元素（不带索引）
+            if (currentIndices.Length == 0)
+            {
+                // 只有在根层级才进行元素收集和统一索引分配
+                var tempElements = new List<ArrayElement>();
+                CollectArrayElementsAndInitLists(cursor, arrayInfo, dimension, currentIndices, tempElements);
+
+                // 为所有元素分配正确的索引
+                for (int i = 0; i < tempElements.Count; i++)
+                {
+                    var element = tempElements[i];
+                    element.Indices = CalculateFlatIndices(new int[] { }, i, arrayInfo.DimensionSizes);
+                    arrayInfo.Elements.Add(element);
+                    LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", element.Indices)}], 值：{element.Value}, 位置：{element.StartPosition}");
+                }
+            }
+        }
+
+        private void CollectArrayElementsAndInitLists(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, List<ArrayElement> tempElements)
+        {
+            // 先记录当前初始化列表的位置（仅当不是最内层时）
             if (currentIndices.Length > 0)
             {
                 uint offset = GetOffset(cursor.Location);
@@ -461,37 +481,6 @@ namespace InlayIndex.Parser
                 LogHelper.WriteDebug($"提取初始化列表 - 索引：[{string.Join("][", currentIndices)}], 原始位置：{searchStart}, 最终位置：{finalPosition}");
             }
 
-            // 用于扁平化初始化的元素索引计算
-            int[] flatIndices = (int[])currentIndices.Clone();
-            int elementCount = 0;
-            bool hasNestedInitList = false;
-
-            // 先检查是否有嵌套的 InitListExpr
-            var checkState = new VisitState<bool>(false);
-            var checkClientData = GCHandle.Alloc(checkState);
-            try
-            {
-                unsafe
-                {
-                    CXCursorVisitor checkVisitor = (child, parent, data) =>
-                    {
-                        var s = FromClientData<VisitState<bool>>(data);
-                        if (s != null && child.Kind == CXCursorKind.CXCursor_InitListExpr)
-                        {
-                            s.Value = true;
-                            return CXChildVisitResult.CXChildVisit_Break;
-                        }
-                        return CXChildVisitResult.CXChildVisit_Continue;
-                    };
-                    cursor.VisitChildren(checkVisitor, ToClientData(checkClientData));
-                }
-            }
-            finally
-            {
-                hasNestedInitList = checkState.Value;
-                checkClientData.Free();
-            }
-
             var state = new ArrayElementsState(0, arrayInfo, dimension, currentIndices);
             var clientData = GCHandle.Alloc(state);
             try
@@ -509,12 +498,13 @@ namespace InlayIndex.Parser
                             Array.Copy(s.CurrentIndices, newIndices, s.CurrentIndices.Length);
                             newIndices[s.CurrentIndices.Length] = s.ChildIndex;
 
-                            ExtractArrayElements(child, s.ArrayInfo, s.Dimension - 1, newIndices);
+                            // 递归处理嵌套初始化列表
+                            CollectArrayElementsAndInitLists(child, s.ArrayInfo, s.Dimension - 1, newIndices, tempElements);
                             s.ChildIndex++;
                         }
-                        else if (!hasNestedInitList || s.Dimension == 1)
+                        else if (tempElements != null)
                         {
-                            // 处理元素 - 如果没有嵌套初始化列表或者是最内层维度
+                            // 处理元素 - 只在根层级提供的 tempElements 中收集
                             uint offset = GetOffset(child.Location);
                             int adjustedOffset = (int)offset;
                             
@@ -538,34 +528,16 @@ namespace InlayIndex.Parser
                                 }
                             }
                             
-                            // 计算完整的多维索引
-                            int[] fullIndices;
-                            if (s.Dimension == 1)
-                            {
-                                // 正常的嵌套初始化情况
-                                fullIndices = new int[s.CurrentIndices.Length + 1];
-                                Array.Copy(s.CurrentIndices, fullIndices, s.CurrentIndices.Length);
-                                fullIndices[s.CurrentIndices.Length] = s.ChildIndex;
-                            }
-                            else
-                            {
-                                // 扁平化初始化的情况
-                                fullIndices = CalculateFlatIndices(flatIndices, elementCount, arrayInfo.DimensionSizes);
-                            }
-                            
                             var element = new ArrayElement
                             {
-                                Indices = fullIndices,
+                                Indices = new int[] { }, // 稍后分配
                                 StartPosition = adjustedOffset,
                                 EndPosition = adjustedOffset,
                                 Value = child.ToString()
                             };
                             
-                            LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", fullIndices)}], 值：{element.Value}, 原始位置：{offset}, 调整后位置：{adjustedOffset}");
-                            
-                            s.ArrayInfo.Elements.Add(element);
+                            tempElements.Add(element);
                             s.ChildIndex++;
-                            elementCount++;
                         }
 
                         return CXChildVisitResult.CXChildVisit_Continue;
@@ -581,18 +553,18 @@ namespace InlayIndex.Parser
 
         private int[] CalculateFlatIndices(int[] baseIndices, int elementIndex, int[] dimensionSizes)
         {
-            int[] indices = (int[])baseIndices.Clone();
+            int[] result = new int[dimensionSizes.Length];
             int remaining = elementIndex;
             
             // 从最内层开始计算索引
-            for (int i = dimensionSizes.Length - 1; i >= indices.Length; i--)
+            for (int i = dimensionSizes.Length - 1; i >= 0; i--)
             {
                 int size = dimensionSizes[i];
-                indices = new int[] { remaining % size }.Concat(indices).ToArray();
+                result[i] = remaining % size;
                 remaining = remaining / size;
             }
             
-            return indices;
+            return result;
         }
 
         private EnumInfo ExtractEnumInfo(CXCursor cursor)
