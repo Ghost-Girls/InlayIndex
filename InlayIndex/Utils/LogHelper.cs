@@ -1,9 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Diagnostics;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
 
 namespace InlayIndex.Utils
 {
@@ -42,7 +40,7 @@ namespace InlayIndex.Utils
                 try
                 {
                     string logDir;
-                    
+
                     // 优先使用自定义目录
                     if (!string.IsNullOrEmpty(_customLogDirectory))
                     {

@@ -8,7 +8,7 @@ namespace InlayIndex.Options
     public class InlayIndexOptionsPage : DialogPage
     {
         private static InlayIndexOptionsPage _defaultInstance;
-        
+
         public static InlayIndexOptionsPage Default
         {
             get
@@ -20,7 +20,7 @@ namespace InlayIndex.Options
                 return _defaultInstance;
             }
         }
-        
+
         private bool enableArrayIndex = true;
         private bool enableEnumValue = true;
         private bool enableStructField = true;

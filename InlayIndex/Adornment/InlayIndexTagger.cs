@@ -1,3 +1,5 @@
+using InlayIndex.Utils;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
@@ -5,12 +7,8 @@ using Microsoft.VisualStudio.Utilities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Microsoft.VisualStudio.Text.Adornments;
-using InlayIndex.Utils;
-using Microsoft.VisualStudio.Shell;
 
 namespace InlayIndex.Adornment
 {
@@ -54,7 +52,7 @@ namespace InlayIndex.Adornment
             _textBuffer = textBuffer;
 
             _textBuffer.ChangedLowPriority += OnTextBufferChanged;
-            
+
             LogHelper.WriteRenderInfo($"InlayIndexTagger 创建成功 - 文本缓冲区：{_textBuffer.CurrentSnapshot.Length} 字符");
         }
 
@@ -87,7 +85,7 @@ namespace InlayIndex.Adornment
                 });
                 return;
             }
-            
+
             LogHelper.WriteRenderInfo($"开始更新标签 - 标签数：{hintTags.Count}");
             _tagSpans.Clear();
 
@@ -107,13 +105,13 @@ namespace InlayIndex.Adornment
                 {
                     LogHelper.WriteDebug($"创建标签 - 文本：{hintTag.Text}, 原始位置：{hintTag.StartPosition}, 快照长度：{snapshot.Length}");
                     var position = Math.Min(hintTag.StartPosition, snapshot.Length);
-                    
+
                     // 打印位置周围的字符（位置-5 到 位置+10）
                     int contextStart = Math.Max(0, position - 5);
                     int contextEnd = Math.Min(snapshot.Length, position + 15);
                     string context = snapshot.GetText(new Span(contextStart, contextEnd - contextStart));
                     LogHelper.WriteDebug($"位置上下文：[{contextStart}-{contextEnd}]: '{context}'");
-                    
+
                     var span = new SnapshotSpan(snapshot, position, 0);
 
                     var adornment = CreateAdornment(hintTag);

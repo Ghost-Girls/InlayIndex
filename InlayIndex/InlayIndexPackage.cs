@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.Shell;
 using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
@@ -39,13 +38,13 @@ namespace InlayIndex
 
             Instance = this;
             _optionsPage = (Options.InlayIndexOptionsPage)GetDialogPage(typeof(Options.InlayIndexOptionsPage));
-            
+
             // 设置日志目录
             if (!string.IsNullOrEmpty(_optionsPage.LogDirectory))
             {
                 Utils.LogHelper.SetLogDirectory(_optionsPage.LogDirectory);
             }
-            
+
             // 日志系统已经通过静态构造函数自动初始化
             Utils.LogHelper.WriteLog("=== InlayIndexPackage 初始化完成 ===");
             Utils.LogHelper.WriteLog($"日志目录：{_optionsPage.LogDirectory}");

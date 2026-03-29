@@ -3,6 +3,7 @@ using InlayIndex.Models;
 using InlayIndex.Utils;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using ClangSharp.Interop;
 
@@ -294,6 +295,25 @@ namespace InlayIndex.Parser
             var dimensions = new List<int>();
             var currentType = type;
             
+            // 检查最内层的元素类型是否是结构体/类
+            CXType elementType = currentType;
+            while (elementType.kind == CXTypeKind.CXType_ConstantArray || 
+                   elementType.kind == CXTypeKind.CXType_IncompleteArray)
+            {
+                elementType = elementType.ArrayElementType;
+            }
+            
+            // 检查元素类型是否是记录类型（结构体/类/联合）
+            if (elementType.kind == CXTypeKind.CXType_Record ||
+                elementType.kind == CXTypeKind.CXType_Elaborated)
+            {
+                arrayInfo.IsStructArray = true;
+                arrayInfo.StructTypeName = elementType.Spelling.CString;
+                LogHelper.WriteDebug($"识别到结构体数组：{arrayInfo.Name}, 元素类型：{arrayInfo.StructTypeName}");
+            }
+            
+            // 收集数组维度信息
+            currentType = type;
             while (currentType.kind == CXTypeKind.CXType_ConstantArray || 
                    currentType.kind == CXTypeKind.CXType_IncompleteArray)
             {
@@ -313,7 +333,7 @@ namespace InlayIndex.Parser
 
             if (dimensions.Count > 0 && dimensions[0] == -1)
             {
-                var elementType = currentType;
+                var incompleteArrayElementType = currentType;
                 var state = new VisitState<int>(0);
                 
                 var clientData = GCHandle.Alloc(state);
@@ -441,6 +461,37 @@ namespace InlayIndex.Parser
                 LogHelper.WriteDebug($"提取初始化列表 - 索引：[{string.Join("][", currentIndices)}], 原始位置：{searchStart}, 最终位置：{finalPosition}");
             }
 
+            // 用于扁平化初始化的元素索引计算
+            int[] flatIndices = (int[])currentIndices.Clone();
+            int elementCount = 0;
+            bool hasNestedInitList = false;
+
+            // 先检查是否有嵌套的 InitListExpr
+            var checkState = new VisitState<bool>(false);
+            var checkClientData = GCHandle.Alloc(checkState);
+            try
+            {
+                unsafe
+                {
+                    CXCursorVisitor checkVisitor = (child, parent, data) =>
+                    {
+                        var s = FromClientData<VisitState<bool>>(data);
+                        if (s != null && child.Kind == CXCursorKind.CXCursor_InitListExpr)
+                        {
+                            s.Value = true;
+                            return CXChildVisitResult.CXChildVisit_Break;
+                        }
+                        return CXChildVisitResult.CXChildVisit_Continue;
+                    };
+                    cursor.VisitChildren(checkVisitor, ToClientData(checkClientData));
+                }
+            }
+            finally
+            {
+                hasNestedInitList = checkState.Value;
+                checkClientData.Free();
+            }
+
             var state = new ArrayElementsState(0, arrayInfo, dimension, currentIndices);
             var clientData = GCHandle.Alloc(state);
             try
@@ -461,8 +512,9 @@ namespace InlayIndex.Parser
                             ExtractArrayElements(child, s.ArrayInfo, s.Dimension - 1, newIndices);
                             s.ChildIndex++;
                         }
-                        else if (s.Dimension == 1)
+                        else if (!hasNestedInitList || s.Dimension == 1)
                         {
+                            // 处理元素 - 如果没有嵌套初始化列表或者是最内层维度
                             uint offset = GetOffset(child.Location);
                             int adjustedOffset = (int)offset;
                             
@@ -486,20 +538,34 @@ namespace InlayIndex.Parser
                                 }
                             }
                             
+                            // 计算完整的多维索引
+                            int[] fullIndices;
+                            if (s.Dimension == 1)
+                            {
+                                // 正常的嵌套初始化情况
+                                fullIndices = new int[s.CurrentIndices.Length + 1];
+                                Array.Copy(s.CurrentIndices, fullIndices, s.CurrentIndices.Length);
+                                fullIndices[s.CurrentIndices.Length] = s.ChildIndex;
+                            }
+                            else
+                            {
+                                // 扁平化初始化的情况
+                                fullIndices = CalculateFlatIndices(flatIndices, elementCount, arrayInfo.DimensionSizes);
+                            }
+                            
                             var element = new ArrayElement
                             {
-                                Indices = new int[s.CurrentIndices.Length + 1],
+                                Indices = fullIndices,
                                 StartPosition = adjustedOffset,
                                 EndPosition = adjustedOffset,
                                 Value = child.ToString()
                             };
-                            Array.Copy(s.CurrentIndices, element.Indices, s.CurrentIndices.Length);
-                            element.Indices[s.CurrentIndices.Length] = s.ChildIndex;
                             
-                            LogHelper.WriteDebug($"提取数组元素 - 索引：{s.ChildIndex}, 值：{element.Value}, 原始位置：{offset}, 调整后位置：{adjustedOffset}");
+                            LogHelper.WriteDebug($"提取数组元素 - 索引：[{string.Join("][", fullIndices)}], 值：{element.Value}, 原始位置：{offset}, 调整后位置：{adjustedOffset}");
                             
                             s.ArrayInfo.Elements.Add(element);
                             s.ChildIndex++;
+                            elementCount++;
                         }
 
                         return CXChildVisitResult.CXChildVisit_Continue;
@@ -511,6 +577,22 @@ namespace InlayIndex.Parser
             {
                 clientData.Free();
             }
+        }
+
+        private int[] CalculateFlatIndices(int[] baseIndices, int elementIndex, int[] dimensionSizes)
+        {
+            int[] indices = (int[])baseIndices.Clone();
+            int remaining = elementIndex;
+            
+            // 从最内层开始计算索引
+            for (int i = dimensionSizes.Length - 1; i >= indices.Length; i--)
+            {
+                int size = dimensionSizes[i];
+                indices = new int[] { remaining % size }.Concat(indices).ToArray();
+                remaining = remaining / size;
+            }
+            
+            return indices;
         }
 
         private EnumInfo ExtractEnumInfo(CXCursor cursor)

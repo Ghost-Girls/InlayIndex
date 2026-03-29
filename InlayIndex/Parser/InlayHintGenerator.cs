@@ -1,10 +1,8 @@
 using InlayIndex.Models;
 using InlayIndex.Options;
 using InlayIndex.Utils;
-using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Media;
 
 namespace InlayIndex.Parser
 {
@@ -54,7 +52,7 @@ namespace InlayIndex.Parser
             foreach (var array in arrays)
             {
                 LogHelper.WriteDebug($"处理数组：{array.Name}, 维度：{array.Dimensions}, 元素数：{array.Elements.Count}");
-                
+
                 if (array.Dimensions > (ArrayDimension)_options.MaxDimensions)
                 {
                     LogHelper.WriteDebug($"跳过数组 {array.Name} - 维度 {_options.MaxDimensions}");
@@ -101,7 +99,7 @@ namespace InlayIndex.Parser
                     // 简洁索引模式：只显示当前维度的最后一个索引
                     indexText = $"[{initList.Indices[initList.Indices.Length - 1]}]";
                 }
-                
+
                 var tag = new InlayHintTag
                 {
                     Text = $"{indexText}:",
@@ -121,7 +119,7 @@ namespace InlayIndex.Parser
             foreach (var element in array.Elements)
             {
                 var indexText = BuildIndexText(element.Indices);
-                
+
                 var tag = new InlayHintTag
                 {
                     Text = $"{indexText}:",
@@ -188,7 +186,7 @@ namespace InlayIndex.Parser
                         {
                             var element = elements[i];
                             var fieldName = GetFieldNameByIndex(array, i);
-                            
+
                             var fieldTag = new InlayHintTag
                             {
                                 Text = $".{fieldName}:",
@@ -263,7 +261,7 @@ namespace InlayIndex.Parser
             foreach (var structInfo in structs)
             {
                 LogHelper.WriteDebug($"处理结构体：{structInfo.Name}, 字段数：{structInfo.Fields.Count}");
-                
+
                 foreach (var field in structInfo.Fields)
                 {
                     if (field.IsArray)

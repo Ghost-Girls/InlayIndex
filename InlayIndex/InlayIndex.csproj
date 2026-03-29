@@ -81,11 +81,11 @@
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" />
     <PackageReference Include="ClangSharp" Version="16.0.0" />
     <PackageReference Include="ClangSharp.Interop" Version="16.0.0" />
-    <PackageReference Include="libclang.runtime.win-x64" Version="16.0.0" />
+    <PackageReference Include="libclang.runtime.win-x64" Version="16.0.6" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)libclang.runtime.win-x64\16.0.0\runtimes\win-x64\native\libclang.dll">
+    <Content Include="$(NuGetPackageRoot)libclang.runtime.win-x64\16.0.6\runtimes\win-x64\native\libclang.dll">
       <Link>libclang.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>

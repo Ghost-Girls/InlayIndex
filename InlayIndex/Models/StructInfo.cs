@@ -15,7 +15,7 @@ namespace InlayIndex.Models
     public class StructInfo
     {
         public string Name { get; set; }
-        public string Kind { get; set; } 
+        public string Kind { get; set; }
         public List<StructFieldInfo> Fields { get; set; }
         public int DeclarationStart { get; set; }
         public int DeclarationEnd { get; set; }

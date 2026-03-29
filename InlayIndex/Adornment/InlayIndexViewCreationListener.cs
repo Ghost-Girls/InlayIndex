@@ -1,16 +1,12 @@
+using InlayIndex.Parser;
+using InlayIndex.Utils;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
-using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Utilities;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.IO;
 using System.Threading.Tasks;
-using InlayIndex.Parser;
-using InlayIndex.Models;
-using Microsoft.VisualStudio.Shell;
-using InlayIndex.Utils;
 
 namespace InlayIndex.Adornment
 {
@@ -29,7 +25,7 @@ namespace InlayIndex.Adornment
         {
             LogHelper.WriteViewInfo($"视图创建 - 文件：{textView.TextSnapshot.TextBuffer.Properties.GetProperty<ITextDocument>(typeof(ITextDocument))?.FilePath ?? "未知"}");
             LogHelper.WriteViewInfo($"文本视图长度：{textView.TextSnapshot.Length} 字符");
-            
+
             // 先尝试从包获取选项页，如果没有则用默认值
             var optionsPage = InlayIndexPackage.Instance?.GetOptionsPage();
             if (optionsPage == null)
@@ -43,17 +39,17 @@ namespace InlayIndex.Adornment
             }
 
             InlayIndexTagger tagger = null;
-            
+
             try
             {
                 LogHelper.WriteViewInfo("准备创建 ClangParser...");
                 _parser = new ClangParser();
                 LogHelper.WriteViewInfo("ClangParser 创建成功");
-                
+
                 LogHelper.WriteViewInfo("准备创建 InlayHintGenerator...");
                 _generator = new InlayHintGenerator(optionsPage);
                 LogHelper.WriteViewInfo("InlayHintGenerator 创建成功");
-                
+
                 LogHelper.WriteViewInfo("解析器和生成器初始化完成");
             }
             catch (Exception ex)
@@ -79,11 +75,21 @@ namespace InlayIndex.Adornment
                 }
 
                 LogHelper.WriteViewInfo("准备注册文本变化事件...");
-                textView.TextBuffer.ChangedLowPriority += async (s, e) =>
+                textView.TextBuffer.ChangedLowPriority += (s, e) =>
                 {
                     LogHelper.WriteViewInfo("文本缓冲区变化事件触发");
-                    await Task.Delay(500);
-                    await UpdateTagsAsync(textView, tagger);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(500);
+                            await UpdateTagsAsync(textView, tagger);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogHelper.WriteError("文本变化事件处理时发生异常", ex);
+                        }
+                    });
                 };
                 LogHelper.WriteViewInfo("文本变化事件注册成功");
             }
@@ -97,7 +103,7 @@ namespace InlayIndex.Adornment
             try
             {
                 LogHelper.WriteViewInfo("准备启动 Task.Run");
-                Task.Run(async () =>
+                _ = Task.Run(async () =>
                 {
                     try
                     {
@@ -145,7 +151,7 @@ namespace InlayIndex.Adornment
                     string desc = char.IsControl(c) ? $"\\x{(int)c:X2}" : c.ToString();
                     LogHelper.WriteViewInfo($"  [{i}]: '{desc}'");
                 }
-                
+
                 // 检查换行符
                 int crCount = 0, lfCount = 0, crlfCount = 0;
                 for (int i = 0; i < text.Length; i++)
@@ -159,7 +165,7 @@ namespace InlayIndex.Adornment
                     else if (text[i] == '\n') lfCount++;
                 }
                 LogHelper.WriteViewInfo($"换行符统计：CR={crCount}, LF={lfCount}, CRLF={crlfCount}");
-                
+
                 result = _parser.ParseCode(text, filePath);
 
                 if (result.Success)
