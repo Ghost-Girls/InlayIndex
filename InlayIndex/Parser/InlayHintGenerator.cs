@@ -17,7 +17,7 @@ namespace InlayIndex.Parser
             LogHelper.WriteTagInfo($"配置 - 数组索引：{_options.EnableArrayIndex}, 枚举值：{_options.EnableEnumValue}, 结构体字段：{_options.EnableStructField}");
         }
 
-        public List<InlayHintTag> GenerateTags(ParseResult parseResult)
+        public List<InlayHintTag> GenerateTags(ParseResult parseResult, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             LogHelper.WriteTagInfo($"开始生成标签 - 数组：{parseResult.Arrays.Count}, 枚举：{parseResult.Enums.Count}, 结构体：{parseResult.Structs.Count}");
             var tags = new List<InlayHintTag>();
@@ -25,26 +25,26 @@ namespace InlayIndex.Parser
             if (_options.EnableArrayIndex)
             {
                 LogHelper.WriteTagInfo("生成数组索引标签...");
-                tags.AddRange(GenerateArrayIndexTags(parseResult));
+                tags.AddRange(GenerateArrayIndexTags(parseResult, snapshot));
             }
 
             if (_options.EnableEnumValue)
             {
                 LogHelper.WriteTagInfo("生成枚举值标签...");
-                tags.AddRange(GenerateEnumValueTags(parseResult.Enums));
+                tags.AddRange(GenerateEnumValueTags(parseResult.Enums, snapshot));
             }
 
             if (_options.EnableStructField)
             {
                 LogHelper.WriteTagInfo("生成结构体字段标签...");
-                tags.AddRange(GenerateStructFieldTags(parseResult.Structs));
+                tags.AddRange(GenerateStructFieldTags(parseResult.Structs, snapshot));
             }
 
             LogHelper.WriteTagInfo($"标签生成完成，共生成 {tags.Count} 个标签");
             return tags;
         }
 
-        private List<InlayHintTag> GenerateArrayIndexTags(ParseResult parseResult)
+        private List<InlayHintTag> GenerateArrayIndexTags(ParseResult parseResult, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var tags = new List<InlayHintTag>();
             LogHelper.WriteDebug($"处理 {parseResult.Arrays.Count} 个数组");
@@ -129,6 +129,7 @@ namespace InlayIndex.Parser
                     Text = $"{indexText}:",
                     StartPosition = initList.StartPosition,
                     EndPosition = initList.StartPosition,
+                    TrackingSpan = initList.TrackingSpan,  // ✅ 使用 ITrackingSpan
                     Type = InlayHintType.ArrayIndex,
                     ForegroundColor = _options.GetForegroundColor(),
                     FontSize = _options.FontSize,
@@ -154,6 +155,7 @@ namespace InlayIndex.Parser
                     Text = $"{indexText}:",
                     StartPosition = element.StartPosition,
                     EndPosition = element.StartPosition,
+                    TrackingSpan = element.TrackingSpan,  // ✅ 使用 ITrackingSpan
                     Type = InlayHintType.ArrayIndex,
                     ForegroundColor = _options.GetForegroundColor(),
                     FontSize = _options.FontSize,
@@ -346,7 +348,7 @@ namespace InlayIndex.Parser
             return sb.ToString();
         }
 
-        private List<InlayHintTag> GenerateEnumValueTags(List<EnumInfo> enums)
+        private List<InlayHintTag> GenerateEnumValueTags(List<EnumInfo> enums, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var tags = new List<InlayHintTag>();
 
@@ -361,6 +363,7 @@ namespace InlayIndex.Parser
                             Text = $"={member.Value}",
                             StartPosition = member.EndPosition,
                             EndPosition = member.EndPosition,
+                            TrackingSpan = member.TrackingSpan,  // ✅ 使用 ITrackingSpan
                             Type = InlayHintType.EnumValue,
                             ForegroundColor = _options.GetForegroundColor(),
                             FontSize = _options.FontSize,
@@ -376,7 +379,7 @@ namespace InlayIndex.Parser
             return tags;
         }
 
-        private List<InlayHintTag> GenerateStructFieldTags(List<StructInfo> structs)
+        private List<InlayHintTag> GenerateStructFieldTags(List<StructInfo> structs, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var tags = new List<InlayHintTag>();
             LogHelper.WriteDebug($"处理 {structs.Count} 个结构体");
@@ -399,6 +402,7 @@ namespace InlayIndex.Parser
                             Text = $".{field.Name}:",
                             StartPosition = field.StartPosition,
                             EndPosition = field.EndPosition,
+                            TrackingSpan = field.TrackingSpan,  // ✅ 使用 ITrackingSpan
                             Type = InlayHintType.StructField,
                             ForegroundColor = _options.GetForegroundColor(),
                             FontSize = _options.FontSize,

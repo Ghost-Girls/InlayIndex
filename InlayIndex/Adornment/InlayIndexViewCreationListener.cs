@@ -102,8 +102,38 @@ namespace InlayIndex.Adornment
                             
                             if (!token.IsCancellationRequested)
                             {
-                                // 直接触发 TagsChanged 事件，让 Tagger 重新解析
-                                TriggerTagsChanged(textView, tagger);
+                                // ✅ 方案 A：文本变化时重新解析并更新缓存
+                                var snapshot = textView.TextBuffer.CurrentSnapshot;
+                                var text = snapshot.GetText();
+                                
+                                LogHelper.WriteViewInfo($"重新解析文本，长度：{text.Length}");
+                                
+                                var compilationArgs = new string[] 
+                                { 
+                                    "-x", "c++",
+                                    "-std=c++17",
+                                    "-ferror-limit=0"
+                                };
+                                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot);
+                                
+                                if (parseResult.Success)
+                                {
+                                    var hintTags = _generator.GenerateTags(parseResult, snapshot);
+                                    LogHelper.WriteViewInfo($"解析成功，生成 {hintTags.Count} 个标签");
+                                    
+                                    // 更新 Tagger 的缓存
+                                    tagger.UpdateTags(hintTags);
+                                    
+                                    // 触发 TagsChanged 事件进行渲染
+                                    var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
+                                    tagger.RaiseTagsChanged(fullSpan);
+                                    
+                                    LogHelper.WriteViewInfo("文本变化后的标签更新完成");
+                                }
+                                else
+                                {
+                                    LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
+                                }
                             }
                         }
                         catch (OperationCanceledException)
@@ -178,9 +208,39 @@ namespace InlayIndex.Adornment
                     try
                     {
                         LogHelper.WriteViewInfo("Task.Run 内部开始执行");
-                        // 初次加载时触发标签更新
-                        TriggerTagsChanged(textView, tagger);
-                        LogHelper.WriteViewInfo("TagsChanged 触发完成");
+                        
+                        // ✅ 方案 A：初次加载时解析并缓存标签
+                        var snapshot = textView.TextBuffer.CurrentSnapshot;
+                        var text = snapshot.GetText();
+                        
+                        LogHelper.WriteViewInfo($"初次解析文本，长度：{text.Length}");
+                        
+                        var compilationArgs = new string[] 
+                        { 
+                            "-x", "c++",
+                            "-std=c++17",
+                            "-ferror-limit=0"
+                        };
+                        var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot);
+                        
+                        if (parseResult.Success)
+                        {
+                            var hintTags = _generator.GenerateTags(parseResult, snapshot);
+                            LogHelper.WriteViewInfo($"解析成功，生成 {hintTags.Count} 个标签");
+                            
+                            // 更新 Tagger 的缓存
+                            tagger.UpdateTags(hintTags);
+                            
+                            // 触发 TagsChanged 事件进行渲染
+                            var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
+                            tagger.RaiseTagsChanged(fullSpan);
+                            
+                            LogHelper.WriteViewInfo("初次标签更新完成");
+                        }
+                        else
+                        {
+                            LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -202,7 +262,7 @@ namespace InlayIndex.Adornment
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
                 var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
                 
-                // 触发 TagsChanged 事件，让 Tagger 的 GetTags 方法重新解析
+                // 触发 TagsChanged 事件
                 tagger.RaiseTagsChanged(fullSpan);
                 
                 LogHelper.WriteViewInfo($"TagsChanged 事件已触发 - 快照长度：{snapshot.Length}");

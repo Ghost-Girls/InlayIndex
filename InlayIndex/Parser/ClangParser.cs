@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using ClangSharp.Interop;
+using Microsoft.VisualStudio.Text;
 
 namespace InlayIndex.Parser
 {
@@ -158,7 +159,7 @@ namespace InlayIndex.Parser
             return result;
         }
 
-        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null)
+        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var result = new ParseResult();
             
@@ -169,7 +170,7 @@ namespace InlayIndex.Parser
                 // 保存原始 UTF-16 字符串，用于后续 offset 转换
                 _currentCode = code;
                 
-                // 将C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
+                // 将 C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
                 byte[] utf8Bytes = System.Text.Encoding.UTF8.GetBytes(code);
                 LogHelper.WriteParseInfo($"ParseCode: 转换字符串 - UTF-16 长度={code.Length}, UTF-8 字节数={utf8Bytes.Length}");
                 LogHelper.WriteParseInfo($"ParseCode: 文件名={fileName}, 编译参数={string.Join(" ", args)}");
@@ -268,7 +269,8 @@ namespace InlayIndex.Parser
                             result.TranslationUnit = tu;
                             result.Success = true;
                             
-                            VisitChildren(tu.Cursor, result);
+                            // 传递 snapshot 给 VisitChildren，用于创建 ITrackingSpan
+                            VisitChildren(tu.Cursor, result, snapshot);
                         }
                         catch (Exception parseEx)
                         {
@@ -290,10 +292,10 @@ namespace InlayIndex.Parser
             return result;
         }
 
-        private void VisitChildren(CXCursor cursor, ParseResult result)
+        private void VisitChildren(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             LogHelper.WriteDebug($"开始遍历 AST 节点，根节点：{cursor.Kind}");
-            VisitChildrenRecursive(cursor, result);
+            VisitChildrenRecursive(cursor, result, snapshot);
             
             LogHelper.WriteDebug($"准备关联结构体数组和结构体信息，数组数：{result.Arrays.Count}, 结构体数：{result.Structs.Count}");
             
@@ -303,7 +305,7 @@ namespace InlayIndex.Parser
             LogHelper.WriteDebug("AST 遍历完成");
         }
         
-        private void VisitChildrenRecursive(CXCursor cursor, ParseResult result)
+        private void VisitChildrenRecursive(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var clientData = GCHandle.Alloc(result);
             try
@@ -319,22 +321,22 @@ namespace InlayIndex.Parser
                         {
                             case CXCursorKind.CXCursor_VarDecl:
                                 LogHelper.WriteDebug($"发现变量声明：{c.ToString()}");
-                                HandleVariableDeclaration(c, res);
+                                HandleVariableDeclaration(c, res, snapshot);
                                 break;
                             case CXCursorKind.CXCursor_EnumDecl:
                                 LogHelper.WriteDebug($"发现枚举声明：{c.ToString()}");
-                                HandleEnumDeclaration(c, res);
+                                HandleEnumDeclaration(c, res, snapshot);
                                 break;
                             case CXCursorKind.CXCursor_StructDecl:
                             case CXCursorKind.CXCursor_UnionDecl:
                             case CXCursorKind.CXCursor_ClassDecl:
                                 LogHelper.WriteDebug($"发现结构体/类声明：{c.ToString()}");
-                                HandleStructDeclaration(c, res);
+                                HandleStructDeclaration(c, res, snapshot);
                                 break;
                         }
 
                         // 递归处理当前节点的子节点
-                        VisitChildrenRecursive(c, res);
+                        VisitChildrenRecursive(c, res, snapshot);
 
                         return CXChildVisitResult.CXChildVisit_Continue;
                     };
@@ -373,7 +375,7 @@ namespace InlayIndex.Parser
             }
         }
 
-        private void HandleVariableDeclaration(CXCursor cursor, ParseResult result)
+        private void HandleVariableDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var type = cursor.Type;
             
@@ -381,7 +383,7 @@ namespace InlayIndex.Parser
                 type.kind == CXTypeKind.CXType_IncompleteArray)
             {
                 LogHelper.WriteDebug($"处理数组变量：{cursor.ToString()}, 类型：{type.kind}");
-                var arrayInfo = ExtractArrayInfo(cursor, type);
+                var arrayInfo = ExtractArrayInfo(cursor, type, snapshot);
                 if (arrayInfo != null)
                 {
                     result.Arrays.Add(arrayInfo);
@@ -390,10 +392,10 @@ namespace InlayIndex.Parser
             }
         }
 
-        private void HandleEnumDeclaration(CXCursor cursor, ParseResult result)
+        private void HandleEnumDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             LogHelper.WriteDebug($"处理枚举：{cursor.ToString()}");
-            var enumInfo = ExtractEnumInfo(cursor);
+            var enumInfo = ExtractEnumInfo(cursor, snapshot);
             if (enumInfo != null)
             {
                 result.Enums.Add(enumInfo);
@@ -401,10 +403,10 @@ namespace InlayIndex.Parser
             }
         }
 
-        private void HandleStructDeclaration(CXCursor cursor, ParseResult result)
+        private void HandleStructDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             LogHelper.WriteDebug($"处理结构体：{cursor.ToString()}");
-            var structInfo = ExtractStructInfo(cursor);
+            var structInfo = ExtractStructInfo(cursor, snapshot);
             if (structInfo != null)
             {
                 result.Structs.Add(structInfo);
@@ -412,7 +414,7 @@ namespace InlayIndex.Parser
             }
         }
 
-        private ArrayInfo ExtractArrayInfo(CXCursor cursor, CXType type)
+        private ArrayInfo ExtractArrayInfo(CXCursor cursor, CXType type, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var arrayInfo = new ArrayInfo
             {
@@ -420,7 +422,8 @@ namespace InlayIndex.Parser
                 TypeName = type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                 Elements = new List<ArrayElement>(),
                 DeclarationStart = (int)GetOffset(cursor.Location),
-                DeclarationEnd = (int)GetOffset(cursor.Location)
+                DeclarationEnd = (int)GetOffset(cursor.Location),
+                Snapshot = snapshot
             };
 
             var dimensions = new List<int>();
@@ -521,7 +524,7 @@ namespace InlayIndex.Parser
             if (foundInitList.HasValue)
             {
                 LogHelper.WriteDebug($"ExtractArrayInfo - 找到 InitListExpr，数组：{arrayInfo.Name}");
-                ExtractArrayElements(foundInitList.Value, arrayInfo, dimensions.Count, new int[] { });
+                ExtractArrayElements(foundInitList.Value, arrayInfo, dimensions.Count, new int[] { }, snapshot);
             }
 
             return arrayInfo;
@@ -596,7 +599,7 @@ namespace InlayIndex.Parser
             return state.Value;
         }
 
-        private void ExtractArrayElements(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices)
+        private void ExtractArrayElements(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             LogHelper.WriteDebug($"ExtractArrayElements - 数组：{arrayInfo.Name}, 维度：{dimension}, 当前索引长度：{currentIndices.Length}");
             
@@ -612,7 +615,7 @@ namespace InlayIndex.Parser
                 LogHelper.WriteDebug($"ExtractArrayElements - 根层级，开始收集元素");
                 // 只有在根层级才进行元素收集和统一索引分配
                 var tempElements = new List<ArrayElement>();
-                CollectArrayElementsAndInitLists(cursor, arrayInfo, dimension, currentIndices, tempElements, 0);
+                CollectArrayElementsAndInitLists(cursor, arrayInfo, dimension, currentIndices, tempElements, 0, snapshot);
 
                 LogHelper.WriteDebug($"ExtractArrayElements - 收集到 {tempElements.Count} 个元素");
                 // 为所有元素分配正确的索引，考虑嵌套打断效果
@@ -620,7 +623,7 @@ namespace InlayIndex.Parser
             }
         }
 
-        private void CollectArrayElementsAndInitLists(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, List<ArrayElement> tempElements, int nestingDepth)
+        private void CollectArrayElementsAndInitLists(CXCursor cursor, ArrayInfo arrayInfo, int dimension, int[] currentIndices, List<ArrayElement> tempElements, int nestingDepth, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             // 先记录当前初始化列表的位置（仅当不是最内层时）
             if (currentIndices.Length > 0)
@@ -680,7 +683,7 @@ namespace InlayIndex.Parser
                             newIndices[currentIndices.Length] = s.Value;
                             
                             // 递归处理嵌套初始化列表，增加嵌套深度
-                            CollectArrayElementsAndInitLists(child, arrayInfo, dimension, newIndices, tempElements, nestingDepth + 1);
+                            CollectArrayElementsAndInitLists(child, arrayInfo, dimension, newIndices, tempElements, nestingDepth + 1, snapshot);
                             s.Value++;
                         }
                         else if (tempElements != null)
@@ -727,7 +730,11 @@ namespace InlayIndex.Parser
                                 StartPosition = adjustedOffset,
                                 EndPosition = adjustedOffset,
                                 Value = child.ToString(),
-                                NestingDepth = nestingDepth // 记录嵌套深度
+                                NestingDepth = nestingDepth, // 记录嵌套深度
+                                TrackingSpan = snapshot?.CreateTrackingSpan(
+                                    new Microsoft.VisualStudio.Text.Span(adjustedOffset, 0),
+                                    SpanTrackingMode.EdgeExclusive
+                                )
                             };
                             
                             tempElements.Add(element);
@@ -862,7 +869,7 @@ namespace InlayIndex.Parser
             return result;
         }
 
-        private EnumInfo ExtractEnumInfo(CXCursor cursor)
+        private EnumInfo ExtractEnumInfo(CXCursor cursor, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var enumInfo = new EnumInfo
             {
@@ -870,7 +877,8 @@ namespace InlayIndex.Parser
                 TypeName = cursor.Type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                 Members = new List<EnumMember>(),
                 DeclarationStart = (int)GetOffset(cursor.Location),
-                DeclarationEnd = (int)GetOffset(cursor.Location)
+                DeclarationEnd = (int)GetOffset(cursor.Location),
+                Snapshot = snapshot
             };
 
             var state = new EnumState(enumInfo, 0);
@@ -911,7 +919,11 @@ namespace InlayIndex.Parser
                             {
                                 Name = child.ToString(),
                                 StartPosition = startPos,
-                                EndPosition = endPos
+                                EndPosition = endPos,
+                                TrackingSpan = snapshot?.CreateTrackingSpan(
+                                    new Microsoft.VisualStudio.Text.Span(endPos, 0),
+                                    SpanTrackingMode.EdgeExclusive
+                                )
                             };
 
                             var enumValue = child.Evaluate;
@@ -945,7 +957,7 @@ namespace InlayIndex.Parser
             return enumInfo;
         }
 
-        private StructInfo ExtractStructInfo(CXCursor cursor)
+        private StructInfo ExtractStructInfo(CXCursor cursor, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var structInfo = new StructInfo
             {
@@ -953,7 +965,8 @@ namespace InlayIndex.Parser
                 Kind = cursor.Kind.ToString(),
                 Fields = new List<StructFieldInfo>(),
                 DeclarationStart = (int)GetOffset(cursor.Location),
-                DeclarationEnd = (int)GetOffset(cursor.Location)
+                DeclarationEnd = (int)GetOffset(cursor.Location),
+                Snapshot = snapshot
             };
 
             var state = new VisitState<StructInfo>(structInfo);
@@ -976,7 +989,11 @@ namespace InlayIndex.Parser
                                 TypeName = child.Type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                                 IsArray = child.Type.kind == CXTypeKind.CXType_ConstantArray,
                                 StartPosition = (int)GetOffset(child.Location),
-                                EndPosition = (int)GetOffset(child.Location)
+                                EndPosition = (int)GetOffset(child.Location),
+                                TrackingSpan = snapshot?.CreateTrackingSpan(
+                                    new Microsoft.VisualStudio.Text.Span((int)GetOffset(child.Location), 0),
+                                    SpanTrackingMode.EdgeExclusive
+                                )
                             };
 
                             if (field.IsArray)

@@ -1,3 +1,0 @@
-严重性	代码	说明	项目	文件	行	抑制状态	详细信息
-错误(活动)	CS7036	未提供与“SpaceNegotiatingAdornmentTag.SpaceNegotiatingAdornmentTag(double, double, double, double, double, PositionAffinity, object, object)”的所需参数“providerTag”对应的参数	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexImprovedTagger.cs	99		
-错误(活动)	CS1626	无法在包含 catch 子句的 Try 块体中生成值	InlayIndex	C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Adornment\InlayIndexImprovedTagger.cs	108		

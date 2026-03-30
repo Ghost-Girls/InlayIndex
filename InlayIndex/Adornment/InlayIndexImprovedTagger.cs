@@ -50,6 +50,7 @@ namespace InlayIndex.Adornment
         private ITextBuffer _textBuffer;
         private ClangParser _parser;
         private InlayHintGenerator _generator;
+        private List<InlayHintTag> _hintTags;  // ✅ 新增：缓存标签（方案 A）
         private bool _isProcessing;
         private bool _isDisposed;
         private const int MaxFileSize = 100 * 1024;
@@ -62,6 +63,7 @@ namespace InlayIndex.Adornment
             _parser = new ClangParser();
             var options = new Options.InlayIndexOptionsPage();
             _generator = new InlayHintGenerator(options);
+            _hintTags = new List<InlayHintTag>();  // ✅ 初始化缓存
             _isProcessing = false;
             _isDisposed = false;
             
@@ -89,55 +91,45 @@ namespace InlayIndex.Adornment
                 yield break;
             }
 
-            List<ITagSpan<IntraTextAdornmentTag>> result = new List<ITagSpan<IntraTextAdornmentTag>>();
             _isProcessing = true;
+            List<ITagSpan<IntraTextAdornmentTag>> result = new List<ITagSpan<IntraTextAdornmentTag>>();
+            
             try
             {
-                var text = snapshot.GetText();
-
-                if (string.IsNullOrWhiteSpace(text) || text.Length < 10)
-                {
-                    LogHelper.WriteRenderInfo("文本太短，跳过解析");
-                    yield break;
-                }
-
-                LogHelper.WriteRenderInfo($"开始解析文本，长度：{text.Length}");
+                // ✅ 方案 A：使用缓存的标签和 ITrackingSpan
+                LogHelper.WriteRenderInfo($"使用缓存的标签，数量：{_hintTags.Count}");
                 
-                // 使用更完整的编译参数，确保 Clang 能正确解析 C++ 代码
-                var compilationArgs = new string[] 
-                { 
-                    "-x", "c++",
-                    "-std=c++17",
-                    "-ferror-limit=0"
-                };
-                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs);
-                
-                if (!parseResult.Success)
+                foreach (var hintTag in _hintTags)
                 {
-                    LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
-                    yield break;
-                }
-
-                var hintTags = _generator.GenerateTags(parseResult);
-                LogHelper.WriteRenderInfo($"解析完成，找到 {hintTags.Count} 个标签");
-                
-                foreach (var hintTag in hintTags)
-                {
-                    if (hintTag.StartPosition < 0 || hintTag.StartPosition > snapshot.Length)
-                        continue;
-
-                    var position = PositionMapper.ClampPosition(snapshot, hintTag.StartPosition);
-                    var span = new SnapshotSpan(snapshot, position, 0);
-
-                    if (spans.Any(s => s.IntersectsWith(span)))
+                    // ✅ 从 ITrackingSpan 获取最新位置
+                    if (hintTag.TrackingSpan == null)
                     {
-                        var adornment = CreateAdornment(hintTag);
-                        var intraTag = new IntraTextAdornmentTag(adornment, null);
-                        result.Add(new TagSpan<IntraTextAdornmentTag>(span, intraTag));
+                        // 如果没有 TrackingSpan，使用原始位置（向后兼容）
+                        var position = PositionMapper.ClampPosition(snapshot, hintTag.StartPosition);
+                        var span = new SnapshotSpan(snapshot, position, 0);
+                        
+                        if (spans.Any(s => s.IntersectsWith(span)))
+                        {
+                            var adornment = CreateAdornment(hintTag);
+                            var intraTag = new IntraTextAdornmentTag(adornment, null);
+                            result.Add(new TagSpan<IntraTextAdornmentTag>(span, intraTag));
+                        }
+                    }
+                    else
+                    {
+                        // ✅ 使用 ITrackingSpan 获取最新位置（方案 A 核心）
+                        var currentSpan = hintTag.TrackingSpan.GetSpan(snapshot);
+                        
+                        if (spans.Any(s => s.IntersectsWith(currentSpan)))
+                        {
+                            var adornment = CreateAdornment(hintTag);
+                            var intraTag = new IntraTextAdornmentTag(adornment, null);
+                            result.Add(new TagSpan<IntraTextAdornmentTag>(currentSpan, intraTag));
+                        }
                     }
                 }
 
-                LogHelper.WriteRenderInfo($"准备返回 {result.Count} 个标签");
+                LogHelper.WriteRenderInfo($"GetTags 返回完成");
             }
             catch (Exception ex)
             {
@@ -147,7 +139,8 @@ namespace InlayIndex.Adornment
             {
                 _isProcessing = false;
             }
-
+            
+            // ✅ 在 try-catch-finally 之外 yield return
             foreach (var tag in result)
             {
                 yield return tag;
@@ -156,8 +149,9 @@ namespace InlayIndex.Adornment
 
         public void UpdateTags(List<InlayHintTag> hintTags)
         {
-            // 方案 B 不需要这个方法，因为 GetTags 会重新解析
-            // 保留这个方法以兼容接口
+            // ✅ 方案 A：保存标签到缓存
+            _hintTags = new List<InlayHintTag>(hintTags);
+            LogHelper.WriteRenderInfo($"UpdateTags: 已更新缓存，标签数量：{_hintTags.Count}");
         }
 
         public void RaiseTagsChanged(SnapshotSpan span)
