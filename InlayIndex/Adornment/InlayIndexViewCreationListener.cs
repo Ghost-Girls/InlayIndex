@@ -38,7 +38,7 @@ namespace InlayIndex.Adornment
                 LogHelper.WriteViewInfo("选项页加载成功");
             }
 
-            InlayIndexTagger tagger = null;
+            InlayIndexImprovedTagger tagger = null;
 
             try
             {
@@ -60,30 +60,54 @@ namespace InlayIndex.Adornment
 
             try
             {
-                LogHelper.WriteViewInfo("准备获取 Tagger...");
+                LogHelper.WriteViewInfo("准备获取 ImprovedTagger...");
                 // 从属性获取或创建 Tagger
-                if (textView.TextBuffer.Properties.ContainsProperty(typeof(InlayIndexTagger)))
+                if (textView.TextBuffer.Properties.ContainsProperty(typeof(InlayIndexImprovedTagger)))
                 {
-                    tagger = textView.TextBuffer.Properties.GetProperty<InlayIndexTagger>(typeof(InlayIndexTagger));
-                    LogHelper.WriteViewInfo("使用已存在的 Tagger");
+                    tagger = textView.TextBuffer.Properties.GetProperty<InlayIndexImprovedTagger>(typeof(InlayIndexImprovedTagger));
+                    LogHelper.WriteViewInfo("使用已存在的 ImprovedTagger");
                 }
                 else
                 {
-                    LogHelper.WriteViewInfo("创建新的 Tagger");
-                    tagger = new InlayIndexTagger(textView.TextBuffer);
-                    textView.TextBuffer.Properties.AddProperty(typeof(InlayIndexTagger), tagger);
+                    LogHelper.WriteViewInfo("创建新的 ImprovedTagger");
+                    tagger = new InlayIndexImprovedTagger(textView.TextBuffer);
+                    textView.TextBuffer.Properties.AddProperty(typeof(InlayIndexImprovedTagger), tagger);
                 }
+                LogHelper.WriteViewInfo("SpaceNegotiatingTagger 获取成功");
 
                 LogHelper.WriteViewInfo("准备注册文本变化事件...");
+                // 使用一个取消令牌源来管理延迟更新
+                System.Threading.CancellationTokenSource cancellationTokenSource = null;
+                
                 textView.TextBuffer.ChangedLowPriority += (s, e) =>
                 {
                     LogHelper.WriteViewInfo("文本缓冲区变化事件触发");
+                    
+                    // 取消之前的延迟任务
+                    if (cancellationTokenSource != null)
+                    {
+                        cancellationTokenSource.Cancel();
+                        cancellationTokenSource.Dispose();
+                    }
+                    
+                    cancellationTokenSource = new System.Threading.CancellationTokenSource();
+                    var token = cancellationTokenSource.Token;
+                    
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            await Task.Delay(500);
-                            await UpdateTagsAsync(textView, tagger);
+                            // 极短延迟：50ms，实现 VSCode 风格的快速响应
+                            await Task.Delay(50, token);
+                            
+                            if (!token.IsCancellationRequested)
+                            {
+                                await UpdateTagsAsync(textView, tagger);
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            LogHelper.WriteViewInfo("更新任务被取消");
                         }
                         catch (Exception ex)
                         {
@@ -92,6 +116,49 @@ namespace InlayIndex.Adornment
                     });
                 };
                 LogHelper.WriteViewInfo("文本变化事件注册成功");
+
+                // 注册文件保存事件
+                var textDoc = textView.TextBuffer.Properties.GetProperty<ITextDocument>(typeof(ITextDocument));
+                if (textDoc != null)
+                {
+                    textDoc.FileActionOccurred += (s, e) =>
+                    {
+                        if (e.FileActionType == FileActionTypes.ContentSavedToDisk)
+                        {
+                            LogHelper.WriteViewInfo("文件保存事件触发");
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await UpdateTagsAsync(textView, tagger);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogHelper.WriteError("文件保存事件处理时发生异常", ex);
+                                }
+                            });
+                        }
+                    };
+                    LogHelper.WriteViewInfo("文件保存事件注册成功");
+                }
+
+                // 注册视图获得焦点事件
+                textView.GotAggregateFocus += (s, e) =>
+                {
+                    LogHelper.WriteViewInfo("视图获得焦点事件触发");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await UpdateTagsAsync(textView, tagger);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogHelper.WriteError("视图获得焦点事件处理时发生异常", ex);
+                        }
+                    });
+                };
+                LogHelper.WriteViewInfo("视图获得焦点事件注册成功");
             }
             catch (Exception ex)
             {
@@ -124,7 +191,7 @@ namespace InlayIndex.Adornment
             }
         }
 
-        private async Task UpdateTagsAsync(IWpfTextView textView, InlayIndexTagger tagger)
+        private async Task UpdateTagsAsync(IWpfTextView textView, InlayIndexImprovedTagger tagger)
         {
             LogHelper.WriteViewInfo("UpdateTagsAsync 被调用了！");
             try
@@ -142,29 +209,7 @@ namespace InlayIndex.Adornment
 
                 ParseResult result;
                 // 强制使用编辑器快照中的内容，确保与显示内容一致
-                // 详细诊断：打印开头和结尾的字符，检查 BOM 和换行符
                 LogHelper.WriteViewInfo($"解析代码字符串（来自编辑器快照），长度：{text.Length}，文件：{filePath}");
-                LogHelper.WriteViewInfo($"前 20 个字符（带索引）：");
-                for (int i = 0; i < Math.Min(20, text.Length); i++)
-                {
-                    char c = text[i];
-                    string desc = char.IsControl(c) ? $"\\x{(int)c:X2}" : c.ToString();
-                    LogHelper.WriteViewInfo($"  [{i}]: '{desc}'");
-                }
-
-                // 检查换行符
-                int crCount = 0, lfCount = 0, crlfCount = 0;
-                for (int i = 0; i < text.Length; i++)
-                {
-                    if (text[i] == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
-                    {
-                        crlfCount++;
-                        i++;
-                    }
-                    else if (text[i] == '\r') crCount++;
-                    else if (text[i] == '\n') lfCount++;
-                }
-                LogHelper.WriteViewInfo($"换行符统计：CR={crCount}, LF={lfCount}, CRLF={crlfCount}");
 
                 result = _parser.ParseCode(text, filePath);
 

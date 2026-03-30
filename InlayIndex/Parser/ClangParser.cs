@@ -598,16 +598,28 @@ namespace InlayIndex.Parser
                             uint offset = GetOffset(child.Location);
                             int adjustedOffset = (int)offset;
                             
-                            // 简单调整：向左微调，跳过空白字符
-                            if (!string.IsNullOrEmpty(_currentCode) && adjustedOffset > 0)
+                            // 改进的位置调整：找到元素值的起始位置
+                            if (!string.IsNullOrEmpty(_currentCode))
                             {
-                                adjustedOffset = Math.Max(0, adjustedOffset - 3); // 先向左移3个位置
-                                
-                                // 继续向左寻找非空白字符的位置
+                                // 首先向左找，跳过可能的空格、逗号、制表符
                                 while (adjustedOffset > 0)
                                 {
                                     char c = _currentCode[adjustedOffset];
-                                    if (c == ' ' || c == ',' || c == '\t')
+                                    if (c == ' ' || c == ',' || c == '\t' || c == '\n' || c == '\r')
+                                    {
+                                        adjustedOffset--;
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                }
+                                
+                                // 然后确保我们在一个单词的起始位置（向左找非单词字符）
+                                while (adjustedOffset > 0)
+                                {
+                                    char c = _currentCode[adjustedOffset - 1];
+                                    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')
                                     {
                                         adjustedOffset--;
                                     }
@@ -647,7 +659,6 @@ namespace InlayIndex.Parser
         {
             int[] currentIndices = new int[dimensionSizes.Length];
             int lastNestingDepth = -1;
-            bool wasInNested = false;
             bool indicesValid = true; // 标记索引是否仍然有效
 
             for (int i = 0; i < elements.Count; i++)
@@ -674,7 +685,6 @@ namespace InlayIndex.Parser
                 {
                     // 从嵌套出来了，重置当前维度索引
                     ResetIndicesAfterNesting(currentIndices, element.NestingDepth, dimensionSizes);
-                    wasInNested = true;
                 }
 
                 // 分配当前索引
@@ -785,11 +795,32 @@ namespace InlayIndex.Parser
                         
                         if (child.Kind == CXCursorKind.CXCursor_EnumConstantDecl)
                         {
+                            uint startOffset = GetOffset(child.Location);
+                            int startPos = (int)startOffset;
+                            int endPos = startPos;
+                            
+                            // 查找成员名称的结束位置（向右找逗号、等号或右大括号）
+                            if (!string.IsNullOrEmpty(_currentCode) && startPos < _currentCode.Length)
+                            {
+                                string memberName = child.ToString();
+                                int searchLimit = Math.Min(_currentCode.Length, startPos + memberName.Length + 10);
+                                
+                                for (int i = startPos; i < searchLimit; i++)
+                                {
+                                    char c = _currentCode[i];
+                                    if (c == ',' || c == '=' || c == '}' || c == ' ')
+                                    {
+                                        endPos = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            
                             var member = new EnumMember
                             {
                                 Name = child.ToString(),
-                                StartPosition = (int)GetOffset(child.Location),
-                                EndPosition = (int)GetOffset(child.Location)
+                                StartPosition = startPos,
+                                EndPosition = endPos
                             };
 
                             var enumValue = child.Evaluate;

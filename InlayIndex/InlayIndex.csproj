@@ -59,6 +59,7 @@
     <Compile Include="Parser\ClangParser.cs" />
     <Compile Include="Parser\InlayHintGenerator.cs" />
     <Compile Include="Adornment\InlayIndexTagger.cs" />
+    <Compile Include="Adornment\InlayIndexImprovedTagger.cs" />
     <Compile Include="Adornment\InlayIndexViewCreationListener.cs" />
     <Compile Include="Utils\PositionMapper.cs" />
     <Compile Include="Utils\LogHelper.cs" />

@@ -1,3 +1,4 @@
+using InlayIndex.Models;
 using InlayIndex.Utils;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
@@ -12,57 +13,45 @@ using System.Windows.Media;
 
 namespace InlayIndex.Adornment
 {
-    // 旧的 Tagger 已禁用，使用 InlayIndexImprovedTagger 代替
-    // [Export(typeof(ITaggerProvider))]
-    // [ContentType("C/C++")]
-    // [TagType(typeof(IntraTextAdornmentTag))]
-    public class InlayIndexTaggerProvider : ITaggerProvider
+    [Export(typeof(ITaggerProvider))]
+    [ContentType("C/C++")]
+    [TagType(typeof(IntraTextAdornmentTag))]
+    public class InlayIndexImprovedTaggerProvider : ITaggerProvider
     {
         public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
 
-            InlayIndexTagger tagger;
+            InlayIndexImprovedTagger tagger;
             // 检查是否已经有 Tagger 存储在属性中
-            if (buffer.Properties.ContainsProperty(typeof(InlayIndexTagger)))
+            if (buffer.Properties.ContainsProperty(typeof(InlayIndexImprovedTagger)))
             {
-                tagger = buffer.Properties.GetProperty<InlayIndexTagger>(typeof(InlayIndexTagger));
-                LogHelper.WriteRenderInfo("TaggerProvider: 从属性获取到已存在的 Tagger");
+                tagger = buffer.Properties.GetProperty<InlayIndexImprovedTagger>(typeof(InlayIndexImprovedTagger));
+                LogHelper.WriteRenderInfo("ImprovedTaggerProvider: 从属性获取到已存在的 Tagger");
             }
             else
             {
-                tagger = new InlayIndexTagger(buffer);
-                buffer.Properties.AddProperty(typeof(InlayIndexTagger), tagger);
-                LogHelper.WriteRenderInfo("TaggerProvider: 创建并存储新的 Tagger");
+                tagger = new InlayIndexImprovedTagger(buffer);
+                buffer.Properties.AddProperty(typeof(InlayIndexImprovedTagger), tagger);
+                LogHelper.WriteRenderInfo("ImprovedTaggerProvider: 创建并存储新的 Tagger");
             }
 
             return tagger as ITagger<T>;
         }
     }
 
-    public class InlayIndexTagger : ITagger<IntraTextAdornmentTag>
+    public class InlayIndexImprovedTagger : ITagger<IntraTextAdornmentTag>
     {
         private ITextBuffer _textBuffer;
-        private List<Models.InlayHintTag> _hintTags = new List<Models.InlayHintTag>();
+        private List<InlayHintTag> _hintTags = new List<InlayHintTag>();
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
-        public InlayIndexTagger(ITextBuffer textBuffer)
+        public InlayIndexImprovedTagger(ITextBuffer textBuffer)
         {
             _textBuffer = textBuffer;
-
-            _textBuffer.ChangedLowPriority += OnTextBufferChanged;
-
-            LogHelper.WriteRenderInfo($"InlayIndexTagger 创建成功 - 文本缓冲区：{_textBuffer.CurrentSnapshot.Length} 字符");
-        }
-
-        private void OnTextBufferChanged(object sender, TextContentChangedEventArgs e)
-        {
-            LogHelper.WriteRenderInfo($"文本缓冲区变化 - 旧长度：{e.Before.Length}, 新长度：{e.After.Length}");
-            var snapshot = _textBuffer.CurrentSnapshot;
-            var span = new SnapshotSpan(snapshot, 0, snapshot.Length);
-            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(span));
+            LogHelper.WriteRenderInfo($"InlayIndexImprovedTagger 创建成功 - 文本缓冲区：{_textBuffer.CurrentSnapshot.Length} 字符");
         }
 
         public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
@@ -121,7 +110,7 @@ namespace InlayIndex.Adornment
             }
         }
 
-        public void UpdateTags(List<Models.InlayHintTag> hintTags)
+        public void UpdateTags(List<InlayHintTag> hintTags)
         {
             // 确保在 UI 线程上执行
             if (!ThreadHelper.CheckAccess())
@@ -136,16 +125,15 @@ namespace InlayIndex.Adornment
 
             LogHelper.WriteRenderInfo($"开始更新标签 - 旧标签数：{_hintTags.Count}, 新标签数：{hintTags.Count}");
             
-            // 先清除所有标签
             var snapshot = _textBuffer.CurrentSnapshot;
             var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
             
-            // 先触发一次 TagsChanged 来清除旧标签
+            // 先清除所有标签，触发 TagsChanged
             _hintTags.Clear();
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(fullSpan));
             
             // 然后设置新标签
-            _hintTags = new List<Models.InlayHintTag>(hintTags);
+            _hintTags = new List<InlayHintTag>(hintTags);
             
             // 再次触发 TagsChanged 来显示新标签
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(fullSpan));
@@ -153,7 +141,7 @@ namespace InlayIndex.Adornment
             LogHelper.WriteRenderInfo("标签更新完成");
         }
 
-        private System.Windows.UIElement CreateAdornment(Models.InlayHintTag hintTag)
+        private System.Windows.UIElement CreateAdornment(InlayHintTag hintTag)
         {
             var textBlock = new TextBlock
             {
@@ -177,7 +165,7 @@ namespace InlayIndex.Adornment
             return border;
         }
 
-        private System.Windows.Media.Brush CreateBackgroundBrush(Models.InlayHintTag hintTag)
+        private System.Windows.Media.Brush CreateBackgroundBrush(InlayHintTag hintTag)
         {
             if (hintTag.BackgroundColor.HasValue)
             {
@@ -197,10 +185,6 @@ namespace InlayIndex.Adornment
 
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                _textBuffer.ChangedLowPriority -= OnTextBufferChanged;
-            }
         }
 
         public void Dispose()
