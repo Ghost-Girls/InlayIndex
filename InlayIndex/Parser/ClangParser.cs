@@ -92,8 +92,25 @@ namespace InlayIndex.Parser
 
         public ClangParser()
         {
-            _index = CXIndex.Create();
-            LogHelper.WriteParseInfo("ClangParser 初始化成功");
+            try
+            {
+                LogHelper.WriteParseInfo("开始初始化 CXIndex...");
+                _index = CXIndex.Create();
+                
+                if (_index == null)
+                {
+                    LogHelper.WriteError("CXIndex.Create() 返回 null！libclang 可能未正确加载");
+                    throw new Exception("Failed to create CXIndex - libclang may not be loaded correctly");
+                }
+                
+                LogHelper.WriteParseInfo("CXIndex 初始化成功");
+                LogHelper.WriteParseInfo("ClangParser 初始化成功");
+            }
+            catch (Exception ex)
+            {
+                LogHelper.WriteError("ClangParser 初始化失败", ex);
+                throw;
+            }
         }
 
         public ParseResult ParseFile(string filePath, string[] compilationArgs = null)
@@ -152,12 +169,23 @@ namespace InlayIndex.Parser
                 // 保存原始 UTF-16 字符串，用于后续 offset 转换
                 _currentCode = code;
                 
-                // 将 C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
+                // 将C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
                 byte[] utf8Bytes = System.Text.Encoding.UTF8.GetBytes(code);
                 LogHelper.WriteParseInfo($"ParseCode: 转换字符串 - UTF-16 长度={code.Length}, UTF-8 字节数={utf8Bytes.Length}");
+                LogHelper.WriteParseInfo($"ParseCode: 文件名={fileName}, 编译参数={string.Join(" ", args)}");
+                
+                // 检查 CXIndex 是否有效
+                if (_index == null)
+                {
+                    LogHelper.WriteError("CXIndex 无效！无法进行解析");
+                    result.Success = false;
+                    result.ErrorMessage = "CXIndex is not initialized";
+                    return result;
+                }
                 
                 unsafe
                 {
+                    // 方案 1：使用 unsaved file 直接解析内存中的代码
                     fixed (char* filenamePtr = fileName)
                     fixed (byte* contentsPtr = utf8Bytes)
                     {
@@ -169,29 +197,92 @@ namespace InlayIndex.Parser
                             Length = (uint)utf8Bytes.Length
                         };
 
-                        var tu = CXTranslationUnit.Parse(
-                            _index,
-                            fileName,
-                            args,
-                            unsavedFile,
-                            CXTranslationUnit_Flags.CXTranslationUnit_None);
-
-                        if (tu == null)
+                        LogHelper.WriteParseInfo("开始调用 CXTranslationUnit.Parse (使用 unsaved file)...");
+                        
+                        try
                         {
+                            var tu = CXTranslationUnit.Parse(
+                                _index,
+                                fileName,
+                                args,
+                                unsavedFile,
+                                CXTranslationUnit_Flags.CXTranslationUnit_None);
+
+                            if (tu == null)
+                            {
+                                LogHelper.WriteError("CXTranslationUnit.Parse 返回 null");
+                                
+                                // 尝试不使用 unsaved file，直接解析
+                                LogHelper.WriteParseInfo("尝试不使用 unsaved file 直接解析...");
+                                
+                                // 保存为临时文件
+                                string tempFile = System.IO.Path.GetTempFileName() + ".cpp";
+                                System.IO.File.WriteAllText(tempFile, code);
+                                
+                                try
+                                {
+                                    tu = CXTranslationUnit.Parse(
+                                        _index,
+                                        tempFile,
+                                        args,
+                                        Array.Empty<CXUnsavedFile>(),
+                                        CXTranslationUnit_Flags.CXTranslationUnit_None);
+                                    
+                                    if (tu == null)
+                                    {
+                                        LogHelper.WriteError("使用临时文件解析也返回 null");
+                                        result.Success = false;
+                                        result.ErrorMessage = "Failed to parse translation unit - both methods returned null";
+                                        return result;
+                                    }
+                                    
+                                    LogHelper.WriteParseInfo("使用临时文件解析成功！");
+                                }
+                                finally
+                                {
+                                    try { System.IO.File.Delete(tempFile); } catch { }
+                                }
+                            }
+
+                            // 检查诊断信息
+                            uint diagnosticCount = tu.NumDiagnostics;
+                            LogHelper.WriteParseInfo($"Clang 诊断数量：{diagnosticCount}");
+                            
+                            for (uint i = 0; i < diagnosticCount; i++)
+                            {
+                                var diagnostic = tu.GetDiagnostic(i);
+                                var diagnosticString = diagnostic.ToString();
+                                var severity = diagnostic.Severity;
+                                
+                                // 使用整数值比较：CXDiagnostic_Error=4, CXDiagnostic_Fatal=5
+                                if ((int)severity >= 4)
+                                {
+                                    LogHelper.WriteError($"Clang 错误 [{severity}]: {diagnosticString}");
+                                }
+                                else
+                                {
+                                    LogHelper.WriteParseInfo($"Clang 警告 [{severity}]: {diagnosticString}");
+                                }
+                            }
+
+                            result.TranslationUnit = tu;
+                            result.Success = true;
+                            
+                            VisitChildren(tu.Cursor, result);
+                        }
+                        catch (Exception parseEx)
+                        {
+                            LogHelper.WriteError("CXTranslationUnit.Parse 抛出异常", parseEx);
                             result.Success = false;
-                            result.ErrorMessage = "Failed to parse translation unit";
+                            result.ErrorMessage = $"Parse exception: {parseEx.Message}";
                             return result;
                         }
-
-                        result.TranslationUnit = tu;
-                        result.Success = true;
-                        
-                        VisitChildren(tu.Cursor, result);
                     }
                 }
             }
             catch (Exception ex)
             {
+                LogHelper.WriteError("ParseCode 异常", ex);
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }

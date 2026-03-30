@@ -73,7 +73,7 @@ namespace InlayIndex.Adornment
                     tagger = new InlayIndexImprovedTagger(textView.TextBuffer);
                     textView.TextBuffer.Properties.AddProperty(typeof(InlayIndexImprovedTagger), tagger);
                 }
-                LogHelper.WriteViewInfo("SpaceNegotiatingTagger 获取成功");
+                LogHelper.WriteViewInfo("ImprovedTagger 获取成功");
 
                 LogHelper.WriteViewInfo("准备注册文本变化事件...");
                 // 使用一个取消令牌源来管理延迟更新
@@ -97,12 +97,13 @@ namespace InlayIndex.Adornment
                     {
                         try
                         {
-                            // 极短延迟：50ms，实现 VSCode 风格的快速响应
-                            await Task.Delay(50, token);
+                            // 延迟：500ms，与 DEMO 项目一致
+                            await Task.Delay(500, token);
                             
                             if (!token.IsCancellationRequested)
                             {
-                                await UpdateTagsAsync(textView, tagger);
+                                // 直接触发 TagsChanged 事件，让 Tagger 重新解析
+                                TriggerTagsChanged(textView, tagger);
                             }
                         }
                         catch (OperationCanceledException)
@@ -130,7 +131,8 @@ namespace InlayIndex.Adornment
                             {
                                 try
                                 {
-                                    await UpdateTagsAsync(textView, tagger);
+                                    // 直接触发 TagsChanged 事件
+                                    TriggerTagsChanged(textView, tagger);
                                 }
                                 catch (Exception ex)
                                 {
@@ -150,7 +152,8 @@ namespace InlayIndex.Adornment
                     {
                         try
                         {
-                            await UpdateTagsAsync(textView, tagger);
+                            // 直接触发 TagsChanged 事件
+                            TriggerTagsChanged(textView, tagger);
                         }
                         catch (Exception ex)
                         {
@@ -175,8 +178,9 @@ namespace InlayIndex.Adornment
                     try
                     {
                         LogHelper.WriteViewInfo("Task.Run 内部开始执行");
-                        await UpdateTagsAsync(textView, tagger);
-                        LogHelper.WriteViewInfo("UpdateTagsAsync 执行完成");
+                        // 初次加载时触发标签更新
+                        TriggerTagsChanged(textView, tagger);
+                        LogHelper.WriteViewInfo("TagsChanged 触发完成");
                     }
                     catch (Exception ex)
                     {
@@ -191,44 +195,21 @@ namespace InlayIndex.Adornment
             }
         }
 
-        private async Task UpdateTagsAsync(IWpfTextView textView, InlayIndexImprovedTagger tagger)
+        private void TriggerTagsChanged(IWpfTextView textView, InlayIndexImprovedTagger tagger)
         {
-            LogHelper.WriteViewInfo("UpdateTagsAsync 被调用了！");
             try
             {
-                LogHelper.WriteViewInfo("开始更新标签...");
                 var snapshot = textView.TextBuffer.CurrentSnapshot;
-                var text = snapshot.GetText();
-                string filePath = null;
-                var textDoc = textView.TextBuffer.Properties.GetProperty<Microsoft.VisualStudio.Text.ITextDocument>(typeof(Microsoft.VisualStudio.Text.ITextDocument));
-                if (textDoc != null)
-                {
-                    filePath = textDoc.FilePath;
-                    LogHelper.WriteViewInfo($"文件路径：{filePath}");
-                }
-
-                ParseResult result;
-                // 强制使用编辑器快照中的内容，确保与显示内容一致
-                LogHelper.WriteViewInfo($"解析代码字符串（来自编辑器快照），长度：{text.Length}，文件：{filePath}");
-
-                result = _parser.ParseCode(text, filePath);
-
-                if (result.Success)
-                {
-                    LogHelper.WriteViewInfo($"解析成功 - 数组：{result.Arrays.Count}, 枚举：{result.Enums.Count}, 结构体：{result.Structs.Count}");
-                    var tags = _generator.GenerateTags(result);
-                    LogHelper.WriteViewInfo($"生成 {tags.Count} 个标签，开始更新");
-                    tagger.UpdateTags(tags);
-                    LogHelper.WriteViewInfo("标签更新完成");
-                }
-                else
-                {
-                    LogHelper.WriteError($"解析失败：{result.ErrorMessage}", null);
-                }
+                var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
+                
+                // 触发 TagsChanged 事件，让 Tagger 的 GetTags 方法重新解析
+                tagger.RaiseTagsChanged(fullSpan);
+                
+                LogHelper.WriteViewInfo($"TagsChanged 事件已触发 - 快照长度：{snapshot.Length}");
             }
             catch (Exception ex)
             {
-                LogHelper.WriteError("更新标签时发生异常", ex);
+                LogHelper.WriteError("触发 TagsChanged 事件时发生异常", ex);
             }
         }
     }

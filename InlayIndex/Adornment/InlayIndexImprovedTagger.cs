@@ -1,4 +1,5 @@
 using InlayIndex.Models;
+using InlayIndex.Parser;
 using InlayIndex.Utils;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
@@ -8,6 +9,7 @@ using Microsoft.VisualStudio.Utilities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
 
@@ -18,13 +20,15 @@ namespace InlayIndex.Adornment
     [TagType(typeof(IntraTextAdornmentTag))]
     public class InlayIndexImprovedTaggerProvider : ITaggerProvider
     {
+        [Import]
+        internal SVsServiceProvider ServiceProvider { get; set; }
+
         public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
 
             InlayIndexImprovedTagger tagger;
-            // 检查是否已经有 Tagger 存储在属性中
             if (buffer.Properties.ContainsProperty(typeof(InlayIndexImprovedTagger)))
             {
                 tagger = buffer.Properties.GetProperty<InlayIndexImprovedTagger>(typeof(InlayIndexImprovedTagger));
@@ -41,104 +45,124 @@ namespace InlayIndex.Adornment
         }
     }
 
-    public class InlayIndexImprovedTagger : ITagger<IntraTextAdornmentTag>
+    public class InlayIndexImprovedTagger : ITagger<IntraTextAdornmentTag>, IDisposable
     {
         private ITextBuffer _textBuffer;
-        private List<InlayHintTag> _hintTags = new List<InlayHintTag>();
+        private ClangParser _parser;
+        private InlayHintGenerator _generator;
+        private bool _isProcessing;
+        private bool _isDisposed;
+        private const int MaxFileSize = 100 * 1024;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
         public InlayIndexImprovedTagger(ITextBuffer textBuffer)
         {
             _textBuffer = textBuffer;
+            _parser = new ClangParser();
+            var options = new Options.InlayIndexOptionsPage();
+            _generator = new InlayHintGenerator(options);
+            _isProcessing = false;
+            _isDisposed = false;
+            
             LogHelper.WriteRenderInfo($"InlayIndexImprovedTagger 创建成功 - 文本缓冲区：{_textBuffer.CurrentSnapshot.Length} 字符");
         }
 
         public IEnumerable<ITagSpan<IntraTextAdornmentTag>> GetTags(NormalizedSnapshotSpanCollection spans)
         {
-            LogHelper.WriteRenderInfo($"GetTags 被调用，spans.Count={spans.Count}, _hintTags.Count={_hintTags.Count}");
-            
-            if (_hintTags.Count == 0)
+            LogHelper.WriteRenderInfo($"GetTags 被调用，spans.Count={spans.Count}");
+
+            if (spans == null || spans.Count == 0)
                 yield break;
 
-            var snapshot = spans.Count > 0 ? spans[0].Snapshot : _textBuffer.CurrentSnapshot;
-            
-            foreach (var hintTag in _hintTags)
+            if (_isProcessing || _isDisposed)
             {
-                ITagSpan<IntraTextAdornmentTag> tagSpan = null;
-                try
+                LogHelper.WriteRenderInfo("正在处理或已释放，跳过");
+                yield break;
+            }
+
+            var snapshot = spans[0].Snapshot;
+            
+            if (snapshot.Length > MaxFileSize)
+            {
+                LogHelper.WriteRenderInfo($"文件过大 ({snapshot.Length} bytes)，跳过");
+                yield break;
+            }
+
+            List<ITagSpan<IntraTextAdornmentTag>> result = new List<ITagSpan<IntraTextAdornmentTag>>();
+            _isProcessing = true;
+            try
+            {
+                var text = snapshot.GetText();
+
+                if (string.IsNullOrWhiteSpace(text) || text.Length < 10)
                 {
-                    var position = PositionMapper.ClampPosition(snapshot, hintTag.StartPosition);
-                    var span = new SnapshotSpan(snapshot, position, 0);
-                    
-                    // 检查是否与请求的 spans 有交集
-                    bool hasIntersection = false;
-                    foreach (var requestSpan in spans)
-                    {
-                        if (span.IntersectsWith(requestSpan))
-                        {
-                            hasIntersection = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!hasIntersection)
+                    LogHelper.WriteRenderInfo("文本太短，跳过解析");
+                    yield break;
+                }
+
+                LogHelper.WriteRenderInfo($"开始解析文本，长度：{text.Length}");
+                
+                // 使用更完整的编译参数，确保 Clang 能正确解析 C++ 代码
+                var compilationArgs = new string[] 
+                { 
+                    "-x", "c++",
+                    "-std=c++17",
+                    "-ferror-limit=0"
+                };
+                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs);
+                
+                if (!parseResult.Success)
+                {
+                    LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
+                    yield break;
+                }
+
+                var hintTags = _generator.GenerateTags(parseResult);
+                LogHelper.WriteRenderInfo($"解析完成，找到 {hintTags.Count} 个标签");
+                
+                foreach (var hintTag in hintTags)
+                {
+                    if (hintTag.StartPosition < 0 || hintTag.StartPosition > snapshot.Length)
                         continue;
 
-                    var adornment = CreateAdornment(hintTag);
+                    var position = PositionMapper.ClampPosition(snapshot, hintTag.StartPosition);
+                    var span = new SnapshotSpan(snapshot, position, 0);
 
-                    var intraTag = new IntraTextAdornmentTag(
-                        adornment,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null);
+                    if (spans.Any(s => s.IntersectsWith(span)))
+                    {
+                        var adornment = CreateAdornment(hintTag);
+                        var intraTag = new IntraTextAdornmentTag(adornment, null);
+                        result.Add(new TagSpan<IntraTextAdornmentTag>(span, intraTag));
+                    }
+                }
 
-                    tagSpan = new TagSpan<IntraTextAdornmentTag>(span, intraTag);
-                }
-                catch (Exception ex)
-                {
-                    LogHelper.WriteError($"创建标签失败 - 文本：{hintTag.Text}, 位置：{hintTag.StartPosition}", ex);
-                }
-                
-                if (tagSpan != null)
-                {
-                    yield return tagSpan;
-                }
+                LogHelper.WriteRenderInfo($"准备返回 {result.Count} 个标签");
+            }
+            catch (Exception ex)
+            {
+                LogHelper.WriteError("GetTags 异常", ex);
+            }
+            finally
+            {
+                _isProcessing = false;
+            }
+
+            foreach (var tag in result)
+            {
+                yield return tag;
             }
         }
 
         public void UpdateTags(List<InlayHintTag> hintTags)
         {
-            // 确保在 UI 线程上执行
-            if (!ThreadHelper.CheckAccess())
-            {
-                ThreadHelper.JoinableTaskFactory.Run(async () =>
-                {
-                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                    UpdateTags(hintTags);
-                });
-                return;
-            }
+            // 方案 B 不需要这个方法，因为 GetTags 会重新解析
+            // 保留这个方法以兼容接口
+        }
 
-            LogHelper.WriteRenderInfo($"开始更新标签 - 旧标签数：{_hintTags.Count}, 新标签数：{hintTags.Count}");
-            
-            var snapshot = _textBuffer.CurrentSnapshot;
-            var fullSpan = new SnapshotSpan(snapshot, 0, snapshot.Length);
-            
-            // 先清除所有标签，触发 TagsChanged
-            _hintTags.Clear();
-            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(fullSpan));
-            
-            // 然后设置新标签
-            _hintTags = new List<InlayHintTag>(hintTags);
-            
-            // 再次触发 TagsChanged 来显示新标签
-            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(fullSpan));
-            
-            LogHelper.WriteRenderInfo("标签更新完成");
+        public void RaiseTagsChanged(SnapshotSpan span)
+        {
+            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(span));
         }
 
         private System.Windows.UIElement CreateAdornment(InlayHintTag hintTag)
@@ -185,6 +209,11 @@ namespace InlayIndex.Adornment
 
         protected virtual void Dispose(bool disposing)
         {
+            if (!_isDisposed)
+            {
+                _isDisposed = true;
+                LogHelper.WriteRenderInfo("InlayIndexImprovedTagger 已释放");
+            }
         }
 
         public void Dispose()
