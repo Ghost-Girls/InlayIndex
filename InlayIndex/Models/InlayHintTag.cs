@@ -8,27 +8,35 @@ namespace InlayIndex.Models
     {
         public string Text { get; set; }
         
-        // ✅ 新增：动态跟踪的 Span（方案 A 核心）
+        /// <summary>
+        /// 动态跟踪的 Span（ITrackingSpan）
+        /// </summary>
         public ITrackingSpan TrackingSpan { get; set; }
         
-        // ✅ 保留：原始位置（用于调试、缓存和序列化）
+        /// <summary>
+        /// 原始位置（用于调试、缓存和序列化）
+        /// </summary>
         public int OriginalStartPosition { get; set; }
         public int OriginalEndPosition { get; set; }
         
-        // ✅ 兼容属性：直接映射到 OriginalStartPosition/OriginalEndPosition
+        /// <summary>
+        /// 兼容属性：映射到 OriginalStartPosition
+        /// </summary>
         public int StartPosition 
         { 
             get => OriginalStartPosition; 
             set => OriginalStartPosition = value; 
         }
         
+        /// <summary>
+        /// 兼容属性：映射到 OriginalEndPosition
+        /// </summary>
         public int EndPosition 
         { 
             get => OriginalEndPosition; 
             set => OriginalEndPosition = value; 
         }
         
-        // 原有的其他属性
         public InlayHintType Type { get; set; }
         public Color? ForegroundColor { get; set; }
         public Color? BackgroundColor { get; set; }
