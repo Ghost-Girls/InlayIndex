@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="InlayIndex.f43670c7-9c46-4c03-acb7-4983fc829c34" Version="0.0.119" Language="en-US" Publisher="Company" />
+        <Identity Id="InlayIndex.f43670c7-9c46-4c03-acb7-4983fc829c34" Version="0.1" Language="en-US" Publisher="Ghost-Girls" />
         <DisplayName>InlayIndex</DisplayName>
-        <Description xml:space="preserve">Empty VSIX Project.</Description>
+        <Description xml:space="preserve">InlayIndex is a Visual Studio extension that enhances C/C++ development by providing inline hints for array indices and enum values. Using ClangSharp for accurate code parsing, it displays index tags (e.g., [0]:, [1][0]:) and enum value labels directly in the editor, improving code readability and reducing manual index tracking.</Description>
+        <Icon>Logo\IconLogo.png</Icon>
+        <PreviewImage>Logo\IconLogoPreview.png</PreviewImage>
+        <Tags>C++, C, InlayHints, Array, Enum, CodeReader, Productivity, InlineHints</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, )">

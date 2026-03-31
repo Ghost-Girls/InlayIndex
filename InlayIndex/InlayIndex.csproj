@@ -3,6 +3,8 @@
   <PropertyGroup>
     <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+    <RestoreAuditPackages>false</RestoreAuditPackages>
+    <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -84,11 +86,18 @@
     <PackageReference Include="ClangSharp.Interop" Version="16.0.0" />
     <PackageReference Include="libclang.runtime.win-x64" Version="16.0.6" />
   </ItemGroup>
-
   <ItemGroup>
     <Content Include="$(NuGetPackageRoot)libclang.runtime.win-x64\16.0.6\runtimes\win-x64\native\libclang.dll">
       <Link>libclang.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="IconLogo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="IconLogoPreview.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
   </ItemGroup>
