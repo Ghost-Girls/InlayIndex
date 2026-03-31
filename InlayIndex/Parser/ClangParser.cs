@@ -731,6 +731,7 @@ namespace InlayIndex.Parser
                                 EndPosition = adjustedOffset,
                                 Value = child.ToString(),
                                 NestingDepth = nestingDepth, // 记录嵌套深度
+                                Depth = nestingDepth, // 设置深度级别，用于颜色显示
                                 TrackingSpan = snapshot?.CreateTrackingSpan(
                                     new Microsoft.VisualStudio.Text.Span(adjustedOffset, 0),
                                     SpanTrackingMode.EdgeExclusive

@@ -1,4 +1,6 @@
 using Microsoft.VisualStudio.Shell;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
@@ -34,6 +36,8 @@ namespace InlayIndex.Options
         private bool enableCpp = true;
         private string logDirectory = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
         private IndexDisplayMode indexDisplayMode = IndexDisplayMode.Simple;
+        private bool enableDepthColors = true;
+        private string depthColors = "#FF0000,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF";
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -155,6 +159,26 @@ namespace InlayIndex.Options
             set => indexDisplayMode = value;
         }
 
+        [Category("样式配置")]
+        [DisplayName("启用深度颜色")]
+        [Description("根据数组的深度给镶嵌提示上色")]
+        [DefaultValue(true)]
+        public bool EnableDepthColors
+        {
+            get => enableDepthColors;
+            set => enableDepthColors = value;
+        }
+
+        [Category("样式配置")]
+        [DisplayName("深度颜色")]
+        [Description("为数组的每个层级自定义颜色，使用逗号分隔的CSS颜色值")]
+        [DefaultValue("#FF0000,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF")]
+        public string DepthColors
+        {
+            get => depthColors;
+            set => depthColors = value;
+        }
+
         public Color GetForegroundColor()
         {
             switch (selectedTheme)
@@ -185,6 +209,41 @@ namespace InlayIndex.Options
                 default:
                     return FontWeights.Bold;
             }
+        }
+
+        public List<Color> GetDepthColors()
+        {
+            var colors = new List<Color>();
+            
+            if (!enableDepthColors || string.IsNullOrEmpty(depthColors))
+            {
+                return colors;
+            }
+            
+            var colorStrings = depthColors.Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var colorString in colorStrings)
+            {
+                var colorStr = colorString.Trim();
+                if (ColorConverter.ConvertFromString(colorStr) is Color color)
+                {
+                    colors.Add(color);
+                }
+            }
+            
+            // 如果没有有效的颜色，返回默认的彩虹色
+            if (colors.Count == 0)
+            {
+                colors.Add(Color.FromRgb(255, 0, 0));     // 红
+                colors.Add(Color.FromRgb(255, 128, 0));   // 橙
+                colors.Add(Color.FromRgb(255, 255, 0));   // 黄
+                colors.Add(Color.FromRgb(0, 255, 0));     // 绿
+                colors.Add(Color.FromRgb(0, 255, 255));   // 青
+                colors.Add(Color.FromRgb(0, 0, 255));     // 蓝
+                colors.Add(Color.FromRgb(128, 0, 255));   // 紫
+            }
+            
+            return colors;
         }
     }
 

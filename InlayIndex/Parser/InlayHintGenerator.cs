@@ -3,6 +3,7 @@ using InlayIndex.Options;
 using InlayIndex.Utils;
 using System.Collections.Generic;
 using System.Text;
+using System.Windows.Media;
 
 namespace InlayIndex.Parser
 {
@@ -85,6 +86,7 @@ namespace InlayIndex.Parser
         {
             var tags = new List<InlayHintTag>();
             var positionCounts = new Dictionary<int, int>();
+            var depthColors = _options.GetDepthColors();
 
             // 第一遍：统计每个位置的出现次数
             foreach (var initList in array.InitLists)
@@ -124,6 +126,10 @@ namespace InlayIndex.Parser
                     indexText = $"[{initList.Indices[initList.Indices.Length - 1]}]";
                 }
 
+                // 计算深度（使用索引的长度作为深度）
+                int depth = initList.Indices.Length - 1;
+                var color = GetColorByDepth(depth, depthColors);
+
                 var tag = new InlayHintTag
                 {
                     Text = $"{indexText}:",
@@ -131,7 +137,7 @@ namespace InlayIndex.Parser
                     EndPosition = initList.StartPosition,
                     TrackingSpan = initList.TrackingSpan,  // ✅ 使用 ITrackingSpan
                     Type = InlayHintType.ArrayIndex,
-                    ForegroundColor = _options.GetForegroundColor(),
+                    ForegroundColor = color,
                     FontSize = _options.FontSize,
                     FontWeight = _options.GetFontWeight(),
                     BackgroundOpacity = _options.BackgroundOpacity
@@ -150,6 +156,9 @@ namespace InlayIndex.Parser
                 
                 var indexText = BuildIndexText(element.Indices);
 
+                // 根据元素的深度选择颜色
+                var color = GetColorByDepth(element.Depth, depthColors);
+
                 var tag = new InlayHintTag
                 {
                     Text = $"{indexText}:",
@@ -157,7 +166,7 @@ namespace InlayIndex.Parser
                     EndPosition = element.StartPosition,
                     TrackingSpan = element.TrackingSpan,  // ✅ 使用 ITrackingSpan
                     Type = InlayHintType.ArrayIndex,
-                    ForegroundColor = _options.GetForegroundColor(),
+                    ForegroundColor = color,
                     FontSize = _options.FontSize,
                     FontWeight = _options.GetFontWeight(),
                     BackgroundOpacity = _options.BackgroundOpacity
@@ -173,6 +182,7 @@ namespace InlayIndex.Parser
         {
             var tags = new List<InlayHintTag>();
             var positionCounts = new Dictionary<int, int>();
+            var depthColors = _options.GetDepthColors();
 
             // 第一遍：统计每个位置的出现次数
             foreach (var initList in array.InitLists)
@@ -212,13 +222,17 @@ namespace InlayIndex.Parser
                     indexText = $"[{initList.Indices[initList.Indices.Length - 1]}]";
                 }
 
+                // 计算深度（使用索引的长度作为深度）
+                int depth = initList.Indices.Length - 1;
+                var color = GetColorByDepth(depth, depthColors);
+
                 var initListTag = new InlayHintTag
                 {
                     Text = $"{indexText}:",
                     StartPosition = initList.StartPosition,
                     EndPosition = initList.StartPosition,
                     Type = InlayHintType.ArrayIndex,
-                    ForegroundColor = _options.GetForegroundColor(),
+                    ForegroundColor = color,
                     FontSize = _options.FontSize,
                     FontWeight = _options.GetFontWeight(),
                     BackgroundOpacity = _options.BackgroundOpacity
@@ -346,6 +360,18 @@ namespace InlayIndex.Parser
                 sb.Append($"[{index}]");
             }
             return sb.ToString();
+        }
+
+        private System.Windows.Media.Color GetColorByDepth(int depth, List<System.Windows.Media.Color> depthColors)
+        {
+            if (depthColors == null || depthColors.Count == 0)
+            {
+                return _options.GetForegroundColor();
+            }
+            
+            // 使用深度作为颜色数组的索引，循环使用
+            int colorIndex = depth % depthColors.Count;
+            return depthColors[colorIndex];
         }
 
         private List<InlayHintTag> GenerateEnumValueTags(List<EnumInfo> enums, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)

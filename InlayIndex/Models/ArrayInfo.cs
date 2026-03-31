@@ -24,6 +24,9 @@ namespace InlayIndex.Models
         
         public int NestingDepth { get; set; }
         
+        // 深度级别，用于颜色显示
+        public int Depth { get; set; }
+        
         public ITrackingSpan TrackingSpan { get; set; }
     }
 
