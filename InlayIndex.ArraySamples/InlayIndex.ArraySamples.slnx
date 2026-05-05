@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="InlayIndex.ArraySamples.vcxproj" Id="4d042658-d990-43c0-a442-cae4a3b7c57d" />
+</Solution>

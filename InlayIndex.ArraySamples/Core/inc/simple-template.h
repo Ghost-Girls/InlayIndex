@@ -1,0 +1,10 @@
+#define AAA 1
+#define BBB 2
+#define CCC 3
+#define DDD 4
+#define EEE 5
+#define FFF 6
+#define GGG 7
+#define HHH 8
+#define III 9
+#define JJJ 10
