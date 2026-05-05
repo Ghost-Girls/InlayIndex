@@ -11,7 +11,11 @@ namespace InlayIndex.Utils
         private static readonly object LockObject = new object();
         private static bool IsInitialized = false;
         // private static IVsOutputWindowPane OutputPane;
+#if DEBUG
         private static LogLevel MinLogLevel = LogLevel.Debug;
+#else
+        private static LogLevel MinLogLevel = LogLevel.Warning;
+#endif
         private static string _customLogDirectory;
 
         static LogHelper()
@@ -25,6 +29,11 @@ namespace InlayIndex.Utils
             // 重新初始化日志系统，使用新目录
             IsInitialized = false;
             InitializeLogger();
+        }
+
+        public static void SetMinLogLevel(LogLevel level)
+        {
+            MinLogLevel = level;
         }
 
         private static void InitializeLogger()
@@ -48,8 +57,13 @@ namespace InlayIndex.Utils
                     }
                     else
                     {
-                        // 默认使用用户指定的目录
+#if DEBUG
                         logDir = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
+#else
+                        logDir = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                            "NexusStudio", "InlayIndex");
+#endif
                     }
 
                     if (!Directory.Exists(logDir))

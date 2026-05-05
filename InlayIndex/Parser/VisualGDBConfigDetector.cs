@@ -378,7 +378,7 @@ namespace InlayIndex.Parser
                     if (string.IsNullOrWhiteSpace(includeValue))
                         continue;
 
-                    LogHelper.WriteParseInfo($"配置探测：AdditionalIncludeDirectories 原始值：{includeValue.Substring(0, Math.Min(300, includeValue.Length))}");
+                    //LogHelper.WriteParseInfo($"配置探测：AdditionalIncludeDirectories 原始值：{includeValue.Substring(0, Math.Min(300, includeValue.Length))}");
 
                     // 分割多个路径（用分号分隔）
                     var paths = includeValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -392,16 +392,16 @@ namespace InlayIndex.Parser
 
                         // 展开环境变量（使用 baseDir 作为基础目录）
                         var expandedPath = ExpandMacros(trimmedPath, baseDir);
-                        LogHelper.WriteParseInfo($"配置探测：路径 '{trimmedPath}' → 展开后 '{expandedPath}'");
+                        //LogHelper.WriteParseInfo($"配置探测：路径 '{trimmedPath}' → 展开后 '{expandedPath}'");
                         
                         if (!string.IsNullOrWhiteSpace(expandedPath) && Directory.Exists(expandedPath))
                         {
                             includePaths.Add(expandedPath);
-                            LogHelper.WriteParseInfo($"配置探测：✓ 添加有效路径：{expandedPath}");
+                            //LogHelper.WriteParseInfo($"配置探测：✓ 添加有效路径：{expandedPath}");
                         }
                         else
                         {
-                            LogHelper.WriteParseInfo($"配置探测：✗ 路径不存在：{expandedPath}");
+                            //LogHelper.WriteParseInfo($"配置探测：✗ 路径不存在：{expandedPath}");
                         }
                     }
                 }
@@ -423,7 +423,7 @@ namespace InlayIndex.Parser
                         if (string.IsNullOrWhiteSpace(includeValue))
                             continue;
 
-                        LogHelper.WriteParseInfo($"配置探测：AdditionalIncludeDirectories 原始值：{includeValue.Substring(0, Math.Min(300, includeValue.Length))}");
+                        //LogHelper.WriteParseInfo($"配置探测：AdditionalIncludeDirectories 原始值：{includeValue.Substring(0, Math.Min(300, includeValue.Length))}");
 
                         var paths = includeValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -438,11 +438,11 @@ namespace InlayIndex.Parser
                             if (!string.IsNullOrWhiteSpace(expandedPath) && Directory.Exists(expandedPath))
                             {
                                 includePaths.Add(expandedPath);
-                                LogHelper.WriteParseInfo($"配置探测：✓ 添加有效路径：{expandedPath}");
+                                //LogHelper.WriteParseInfo($"配置探测：✓ 添加有效路径：{expandedPath}");
                             }
                             else
                             {
-                                LogHelper.WriteParseInfo($"配置探测：✗ 路径不存在：{expandedPath}");
+                                //LogHelper.WriteParseInfo($"配置探测：✗ 路径不存在：{expandedPath}");
                             }
                         }
                     }
