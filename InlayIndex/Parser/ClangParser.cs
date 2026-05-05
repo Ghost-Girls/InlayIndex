@@ -616,6 +616,38 @@ namespace InlayIndex.Parser
             return arrayInfo;
         }
 
+        [DllImport("libclang")]
+        private static extern CXSourceRange clang_getCursorExtent(CXCursor cursor);
+
+        [DllImport("libclang")]
+        private static extern CXSourceLocation clang_getRangeStart(CXSourceRange range);
+
+        [DllImport("libclang")]
+        private static extern CXSourceLocation clang_getRangeEnd(CXSourceRange range);
+
+        private string GetSourceTextForCursor(CXCursor cursor)
+        {
+            try
+            {
+                var range = clang_getCursorExtent(cursor);
+                var startLoc = clang_getRangeStart(range);
+                var endLoc = clang_getRangeEnd(range);
+                
+                var startOffset = GetOffset(startLoc);
+                var endOffset = GetOffset(endLoc);
+                
+                if (startOffset <= endOffset && endOffset <= _currentCode.Length && startOffset >= 0)
+                {
+                    return _currentCode.Substring((int)startOffset, (int)(endOffset - startOffset));
+                }
+            }
+            catch
+            {
+                // 回退到 ToString()
+            }
+            return cursor.ToString();
+        }
+
         private CXCursor? FindInitListExprRecursive(CXCursor cursor, string arrayName)
         {
             CXCursor? result = null;
@@ -817,7 +849,7 @@ namespace InlayIndex.Parser
                                 Indices = new int[] { }, // 稍后分配
                                 StartPosition = adjustedOffset,
                                 EndPosition = adjustedOffset,
-                                Value = child.ToString(),
+                                Value = GetSourceTextForCursor(child),
                                 NestingDepth = nestingDepth, // 记录嵌套深度
                                 Depth = nestingDepth, // 设置深度级别，用于颜色显示
                                 TrackingSpan = snapshot?.CreateTrackingSpan(
