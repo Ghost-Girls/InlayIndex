@@ -75,13 +75,20 @@ namespace InlayIndex.Parser
         /// 从解决方案目录探测项目配置（供外部传入解决方案路径时使用）
         /// </summary>
         /// <param name="solutionDir">解决方案目录路径</param>
+        /// <param name="sourceFile">可选的源文件路径，用于添加源文件目录到Include路径</param>
         /// <returns>项目配置，如果探测失败则返回 null</returns>
-        public VisualGDBConfig DetectConfigFromSolutionDir(string solutionDir)
+        public VisualGDBConfig DetectConfigFromSolutionDir(string solutionDir, string sourceFile = null)
         {
             if (string.IsNullOrEmpty(solutionDir) || !Directory.Exists(solutionDir))
             {
                 LogHelper.WriteParseInfo($"配置探测：解决方案目录无效：{solutionDir}");
                 return null;
+            }
+
+            // 设置源文件路径，用于后续添加源文件目录到Include路径
+            if (!string.IsNullOrEmpty(sourceFile) && File.Exists(sourceFile))
+            {
+                _currentSourceFile = sourceFile;
             }
 
             LogHelper.WriteParseInfo($"配置探测：找到解决方案目录：{solutionDir}");

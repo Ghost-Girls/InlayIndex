@@ -202,7 +202,7 @@ namespace InlayIndex.Parser
                         if (!string.IsNullOrEmpty(solutionDir) && Directory.Exists(solutionDir))
                         {
                             LogHelper.WriteParseInfo($"配置探测：使用 DTE API 提供的解决方案目录：{solutionDir}");
-                            config = detector.DetectConfigFromSolutionDir(solutionDir);
+                            config = detector.DetectConfigFromSolutionDir(solutionDir, filePath);
                         }
                         
                         // 如果 DTE 目录探测失败，尝试自动探测
@@ -637,9 +637,11 @@ namespace InlayIndex.Parser
                                 s.Value = child;
                                 return CXChildVisitResult.CXChildVisit_Break;
                             }
-                            else if (child.Kind == CXCursorKind.CXCursor_UnexposedExpr)
+                            else if (child.Kind == CXCursorKind.CXCursor_UnexposedExpr ||
+                                     child.Kind == CXCursorKind.CXCursor_CStyleCastExpr ||
+                                     child.Kind == CXCursorKind.CXCursor_ParenExpr)
                             {
-                                // 递归搜索 UnexposedExpr 的子节点
+                                 // 递归搜索包装表达式的子节点
                                 var nestedResult = FindInitListExprRecursive(child, arrayName);
                                 if (nestedResult.HasValue)
                                 {
