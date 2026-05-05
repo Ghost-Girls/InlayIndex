@@ -227,7 +227,7 @@ namespace InlayIndex.Parser
                                 if (Directory.Exists(includePath))
                                 {
                                     args.Add($"-I{includePath}");
-                                    LogHelper.WriteParseInfo($"配置探测：添加 Include 路径：{includePath}");
+                                    //LogHelper.WriteParseInfo($"配置探测：添加 Include 路径：{includePath}");
                                 }
                             }
                             
@@ -237,7 +237,7 @@ namespace InlayIndex.Parser
                                 if (!string.IsNullOrWhiteSpace(def))
                                 {
                                     args.Add($"-D{def}");
-                                    LogHelper.WriteParseInfo($"配置探测：添加预定义宏：{def}");
+                                    //LogHelper.WriteParseInfo($"配置探测：添加预定义宏：{def}");
                                 }
                             }
                             
@@ -331,11 +331,16 @@ namespace InlayIndex.Parser
                                     }
                                     
                                     LogHelper.WriteParseInfo("使用临时文件解析成功！");
+                                    _currentFileName = tempFile;
                                 }
                                 finally
                                 {
                                     try { System.IO.File.Delete(tempFile); } catch { }
                                 }
+                            }
+                            else
+                            {
+                                _currentFileName = fileName;
                             }
 
                             // 检查诊断信息
@@ -426,8 +431,8 @@ namespace InlayIndex.Parser
                     Path.GetFileName(normFile).Equals(Path.GetFileName(normCurrent), StringComparison.OrdinalIgnoreCase))
                     return true;
                 
-                // 文件名不匹配时，回退到偏移量检查
-                return offset < _currentCode.Length;
+                // 文件名明确不匹配 → 来自其他文件，过滤掉
+                return false;
             }
             catch
             {
