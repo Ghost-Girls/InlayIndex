@@ -1,4 +1,7 @@
+using EnvDTE;
+using EnvDTE80;
 using InlayIndex.Parser;
+using InlayIndex.Services;
 using InlayIndex.Utils;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
@@ -20,11 +23,18 @@ namespace InlayIndex.Adornment
 
         private ClangParser _parser;
         private InlayHintGenerator _generator;
+        private string _solutionDir;
 
         public void TextViewCreated(IWpfTextView textView)
         {
             var filePath = textView.TextSnapshot.TextBuffer.Properties.GetProperty<ITextDocument>(typeof(ITextDocument))?.FilePath ?? "未知";
             LogHelper.WriteViewInfo($"视图创建 - 文件：{filePath}");
+
+            _solutionDir = ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                return GetSolutionDirectoryFromDTE();
+            });
 
             var optionsPage = InlayIndexPackage.Instance?.GetOptionsPage() ?? Options.InlayIndexOptionsPage.Default;
 
@@ -84,7 +94,7 @@ namespace InlayIndex.Adornment
                                     "-std=c++17",
                                     "-ferror-limit=0"
                                 };
-                                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath);
+                                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath, _solutionDir);
                                 
                                 if (parseResult.Success)
                                 {
@@ -167,7 +177,7 @@ namespace InlayIndex.Adornment
                         "-std=c++17",
                         "-ferror-limit=0"
                     };
-                    var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath);
+                    var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath, _solutionDir);
                     
                     if (parseResult.Success)
                     {
@@ -201,6 +211,30 @@ namespace InlayIndex.Adornment
             {
                 LogHelper.WriteError("触发 TagsChanged 事件时发生异常", ex);
             }
+        }
+
+        private string GetSolutionDirectoryFromDTE()
+        {
+            try
+            {
+                ThreadHelper.ThrowIfNotOnUIThread();
+                var dte = ServiceProvider.GetService(typeof(DTE)) as DTE2;
+                if (dte != null && !string.IsNullOrEmpty(dte.Solution?.FileName))
+                {
+                    var solutionDir = System.IO.Path.GetDirectoryName(dte.Solution.FileName);
+                    LogHelper.WriteDebug($"DTE API 获取解决方案目录：{solutionDir}");
+                    return solutionDir;
+                }
+                else
+                {
+                    LogHelper.WriteDebug("DTE API：当前无打开的解决方案");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.WriteDebug($"DTE API 调用失败：{ex.Message}");
+            }
+            return null;
         }
     }
 }

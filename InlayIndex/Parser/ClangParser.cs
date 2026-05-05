@@ -160,7 +160,7 @@ namespace InlayIndex.Parser
             return result;
         }
 
-        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null, string filePath = null)
+        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null, string filePath = null, string solutionDir = null)
         {
             var result = new ParseResult();
             
@@ -196,7 +196,21 @@ namespace InlayIndex.Parser
                         }
                         
                         var detector = new VisualGDBConfigDetector(enableVisualGDB, enableVcxproj, enableCmake);
-                        var config = detector.DetectConfig(filePath);
+                        VisualGDBConfig config = null;
+                        
+                        // 优先使用 DTE API 获取的解决方案目录
+                        if (!string.IsNullOrEmpty(solutionDir) && Directory.Exists(solutionDir))
+                        {
+                            LogHelper.WriteParseInfo($"配置探测：使用 DTE API 提供的解决方案目录：{solutionDir}");
+                            config = detector.DetectConfigFromSolutionDir(solutionDir);
+                        }
+                        
+                        // 如果 DTE 目录探测失败，尝试自动探测
+                        if (config == null)
+                        {
+                            LogHelper.WriteParseInfo("配置探测：DTE 目录探测失败或未提供，尝试自动探测...");
+                            config = detector.DetectConfig(filePath);
+                        }
                         
                         if (config != null)
                         {
