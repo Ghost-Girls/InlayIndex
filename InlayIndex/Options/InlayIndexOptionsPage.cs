@@ -38,6 +38,9 @@ namespace InlayIndex.Options
         private IndexDisplayMode indexDisplayMode = IndexDisplayMode.Simple;
         private bool enableDepthColors = true;
         private string depthColors = "#FF0000,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF";
+        private bool enableVisualGDBDetection = true;
+        private bool enableVcxprojDetection = true;
+        private bool enableCmakeDetection = false;
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -177,6 +180,36 @@ namespace InlayIndex.Options
         {
             get => depthColors;
             set => depthColors = value;
+        }
+
+        [Category("工程感知")]
+        [DisplayName("启用 VisualGDB 配置探测")]
+        [Description("自动从 VisualGDB 项目配置中提取 Include 路径和宏定义")]
+        [DefaultValue(true)]
+        public bool EnableVisualGDBDetection
+        {
+            get => enableVisualGDBDetection;
+            set => enableVisualGDBDetection = value;
+        }
+
+        [Category("工程感知")]
+        [DisplayName("启用 vcxproj 配置探测")]
+        [Description("自动从普通 vcxproj 文件中提取 Include 路径")]
+        [DefaultValue(true)]
+        public bool EnableVcxprojDetection
+        {
+            get => enableVcxprojDetection;
+            set => enableVcxprojDetection = value;
+        }
+
+        [Category("工程感知")]
+        [DisplayName("启用 CMake 配置探测")]
+        [Description("自动从 CMakeLists.txt 中解析配置")]
+        [DefaultValue(false)]
+        public bool EnableCmakeDetection
+        {
+            get => enableCmakeDetection;
+            set => enableCmakeDetection = value;
         }
 
         public Color GetForegroundColor()

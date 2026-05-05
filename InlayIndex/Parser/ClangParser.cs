@@ -3,6 +3,7 @@ using InlayIndex.Models;
 using InlayIndex.Utils;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using ClangSharp.Interop;
@@ -159,13 +160,84 @@ namespace InlayIndex.Parser
             return result;
         }
 
-        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
+        public ParseResult ParseCode(string code, string fileName = "temp.cpp", string[] compilationArgs = null, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null, string filePath = null)
         {
             var result = new ParseResult();
             
             try
             {
-                var args = compilationArgs ?? new string[] { "-x", "c++" };
+                var args = new List<string>(compilationArgs ?? new string[] { "-x", "c++" });
+                
+                // 自动探测 VisualGDB/vcxproj 项目配置（仅在提供有效文件路径时）
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                {
+                    try
+                    {
+                        LogHelper.WriteParseInfo("配置探测：开始探测项目配置...");
+                        
+                        // 获取配置选项（通过 InlayIndexPackage）
+                        bool enableVisualGDB = true;
+                        bool enableVcxproj = true;
+                        bool enableCmake = false;
+                        
+                        try
+                        {
+                            var optionsPage = InlayIndex.InlayIndexPackage.Instance?.GetOptionsPage() as InlayIndex.Options.InlayIndexOptionsPage;
+                            if (optionsPage != null)
+                            {
+                                enableVisualGDB = optionsPage.EnableVisualGDBDetection;
+                                enableVcxproj = optionsPage.EnableVcxprojDetection;
+                                enableCmake = optionsPage.EnableCmakeDetection;
+                            }
+                        }
+                        catch (Exception optEx)
+                        {
+                            LogHelper.WriteDebug($"配置探测：获取选项失败，使用默认值：{optEx.Message}");
+                        }
+                        
+                        var detector = new VisualGDBConfigDetector(enableVisualGDB, enableVcxproj, enableCmake);
+                        var config = detector.DetectConfig(filePath);
+                        
+                        if (config != null)
+                        {
+                            LogHelper.WriteParseInfo($"配置探测：成功 - 找到项目配置目录：{config.ProjectDir}");
+                            
+                            // 添加 Include 路径
+                            foreach (var includePath in config.IncludePaths)
+                            {
+                                if (Directory.Exists(includePath))
+                                {
+                                    args.Add($"-I{includePath}");
+                                    LogHelper.WriteParseInfo($"配置探测：添加 Include 路径：{includePath}");
+                                }
+                            }
+                            
+                            // 添加预定义宏
+                            foreach (var def in config.PreprocessorDefs)
+                            {
+                                if (!string.IsNullOrWhiteSpace(def))
+                                {
+                                    args.Add($"-D{def}");
+                                    LogHelper.WriteParseInfo($"配置探测：添加预定义宏：{def}");
+                                }
+                            }
+                            
+                            LogHelper.WriteParseInfo($"配置探测：完成 - 共添加 {config.IncludePaths.Count} 个 Include 路径，{config.PreprocessorDefs.Count} 个预定义宏");
+                        }
+                        else
+                        {
+                            LogHelper.WriteParseInfo("配置探测：未找到项目配置，使用默认参数");
+                        }
+                    }
+                    catch (Exception detectEx)
+                    {
+                        LogHelper.WriteError("配置探测失败，使用默认参数", detectEx);
+                    }
+                }
+                else
+                {
+                    LogHelper.WriteParseInfo("配置探测：未提供有效文件路径，跳过探测");
+                }
                 
                 // 保存原始 UTF-16 字符串，用于后续 offset 转换
                 _currentCode = code;
@@ -205,7 +277,7 @@ namespace InlayIndex.Parser
                             var tu = CXTranslationUnit.Parse(
                                 _index,
                                 fileName,
-                                args,
+                                args.ToArray(),
                                 unsavedFile,
                                 CXTranslationUnit_Flags.CXTranslationUnit_None);
 
@@ -225,7 +297,7 @@ namespace InlayIndex.Parser
                                     tu = CXTranslationUnit.Parse(
                                         _index,
                                         tempFile,
-                                        args,
+                                        args.ToArray(),
                                         Array.Empty<CXUnsavedFile>(),
                                         CXTranslationUnit_Flags.CXTranslationUnit_None);
                                     

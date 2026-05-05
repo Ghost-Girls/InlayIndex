@@ -76,6 +76,7 @@ namespace InlayIndex.Adornment
                             {
                                 var snapshot = textView.TextBuffer.CurrentSnapshot;
                                 var text = snapshot.GetText();
+                                var docPath = textView.TextBuffer.Properties.GetProperty<ITextDocument>(typeof(ITextDocument))?.FilePath;
                                 
                                 var compilationArgs = new string[] 
                                 { 
@@ -83,7 +84,7 @@ namespace InlayIndex.Adornment
                                     "-std=c++17",
                                     "-ferror-limit=0"
                                 };
-                                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot);
+                                var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath);
                                 
                                 if (parseResult.Success)
                                 {
@@ -158,6 +159,7 @@ namespace InlayIndex.Adornment
                 {
                     var snapshot = textView.TextBuffer.CurrentSnapshot;
                     var text = snapshot.GetText();
+                    var docPath = textView.TextBuffer.Properties.GetProperty<ITextDocument>(typeof(ITextDocument))?.FilePath;
                     
                     var compilationArgs = new string[] 
                     { 
@@ -165,7 +167,7 @@ namespace InlayIndex.Adornment
                         "-std=c++17",
                         "-ferror-limit=0"
                     };
-                    var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot);
+                    var parseResult = _parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath);
                     
                     if (parseResult.Success)
                     {
