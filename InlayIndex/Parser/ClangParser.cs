@@ -17,6 +17,11 @@ namespace InlayIndex.Parser
         private bool _disposed = false;
         // 保存当前解析的原始 UTF-16 字符串，用于 offset 转换
         private string _currentCode = string.Empty;
+        // 保存当前解析的文件名
+        private string _currentFileName = "temp.cpp";
+
+        [DllImport("libclang")]
+        private static extern void clang_getFileLocation(CXSourceLocation location, out CXFile file, out uint line, out uint column, out uint offset);
 
         private uint GetOffset(CXSourceLocation location)
         {
@@ -253,8 +258,10 @@ namespace InlayIndex.Parser
                     LogHelper.WriteParseInfo("配置探测：未提供有效文件路径，跳过探测");
                 }
                 
-                // 保存原始 UTF-16 字符串，用于后续 offset 转换
+                // 保存原始 UTF-16 字符串和文件名，用于后续 offset 转换和文件过滤
                 _currentCode = code;
+                // 优先使用真实文件路径，其次使用传入的 fileName
+                _currentFileName = !string.IsNullOrEmpty(filePath) ? filePath : fileName;
                 
                 // 将 C# 字符串（UTF-16）转换为 UTF-8 字节数组（libclang 期望的格式）
                 byte[] utf8Bytes = System.Text.Encoding.UTF8.GetBytes(code);
@@ -391,6 +398,43 @@ namespace InlayIndex.Parser
             LogHelper.WriteDebug("AST 遍历完成");
         }
         
+        private bool IsFromCurrentFile(CXCursor cursor)
+        {
+            try
+            {
+                var loc = cursor.Location;
+                clang_getFileLocation(loc, out CXFile file, out _, out _, out uint offset);
+                var fileName = file.Name.CString;
+                
+                // 文件名为空时，用偏移量作为兜底判断
+                if (string.IsNullOrEmpty(fileName))
+                    return offset < _currentCode.Length;
+                
+                var normFile = fileName.Replace('\\', '/');
+                
+                // 排除系统头文件路径（MSVC 和 Windows SDK）
+                if ((normFile.Contains("Program Files") || normFile.Contains("Windows Kits")) && 
+                    normFile.EndsWith(".h", StringComparison.OrdinalIgnoreCase))
+                    return false;
+                
+                var currentFileName = _currentFileName ?? "temp.cpp";
+                var normCurrent = currentFileName.Replace('\\', '/');
+                
+                // 检查文件名是否匹配当前文件（支持完整路径和文件名匹配）
+                if (normFile.EndsWith(normCurrent, StringComparison.OrdinalIgnoreCase) ||
+                    normFile.Contains(normCurrent) ||
+                    Path.GetFileName(normFile).Equals(Path.GetFileName(normCurrent), StringComparison.OrdinalIgnoreCase))
+                    return true;
+                
+                // 文件名不匹配时，回退到偏移量检查
+                return offset < _currentCode.Length;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
         private void VisitChildrenRecursive(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var clientData = GCHandle.Alloc(result);
@@ -421,7 +465,6 @@ namespace InlayIndex.Parser
                                 break;
                         }
 
-                        // 递归处理当前节点的子节点
                         VisitChildrenRecursive(c, res, snapshot);
 
                         return CXChildVisitResult.CXChildVisit_Continue;
@@ -463,6 +506,12 @@ namespace InlayIndex.Parser
 
         private void HandleVariableDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
+            if (!IsFromCurrentFile(cursor))
+            {
+                LogHelper.WriteDebug($"跳过来自其他文件的变量：{cursor.ToString()}");
+                return;
+            }
+
             var type = cursor.Type;
             
             if (type.kind == CXTypeKind.CXType_ConstantArray || 
@@ -480,6 +529,12 @@ namespace InlayIndex.Parser
 
         private void HandleEnumDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
+            if (!IsFromCurrentFile(cursor))
+            {
+                LogHelper.WriteDebug($"跳过来自其他文件的枚举：{cursor.ToString()}");
+                return;
+            }
+
             LogHelper.WriteDebug($"处理枚举：{cursor.ToString()}");
             var enumInfo = ExtractEnumInfo(cursor, snapshot);
             if (enumInfo != null)
@@ -491,6 +546,12 @@ namespace InlayIndex.Parser
 
         private void HandleStructDeclaration(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
+            if (!IsFromCurrentFile(cursor))
+            {
+                LogHelper.WriteDebug($"跳过来自其他文件的结构体：{cursor.ToString()}");
+                return;
+            }
+
             LogHelper.WriteDebug($"处理结构体：{cursor.ToString()}");
             var structInfo = ExtractStructInfo(cursor, snapshot);
             if (structInfo != null)
@@ -524,31 +585,31 @@ namespace InlayIndex.Parser
             }
             
             // 检查元素类型是否是记录类型（结构体/类/联合），排除枚举
-            if (elementType.kind == CXTypeKind.CXType_Record ||
-                elementType.kind == CXTypeKind.CXType_Elaborated)
+            if (elementType.kind == CXTypeKind.CXType_Record)
             {
-                // 对于 Elaborated 类型，需要进一步检查它是否是枚举
-                bool isEnum = false;
-                if (elementType.kind == CXTypeKind.CXType_Elaborated)
+                arrayInfo.IsStructArray = true;
+                arrayInfo.StructTypeName = elementType.Spelling.CString;
+                LogHelper.WriteDebug($"识别到结构体数组：{arrayInfo.Name}, 元素类型：{arrayInfo.StructTypeName}");
+            }
+            else if (elementType.kind == CXTypeKind.CXType_Elaborated)
+            {
+                // 获取 Elaborated 类型的实际类型
+                var namedType = elementType.NamedType;
+                if (namedType.kind == CXTypeKind.CXType_Enum)
                 {
-                    // 获取 Elaborated 类型的实际类型
-                    var namedType = elementType.NamedType;
-                    if (namedType.kind == CXTypeKind.CXType_Enum)
-                    {
-                        isEnum = true;
-                    }
+                    LogHelper.WriteDebug($"识别到枚举数组：{arrayInfo.Name}, 元素类型：{elementType.Spelling.CString}");
                 }
-                
-                // 如果不是枚举，才认为是结构体数组
-                if (!isEnum)
+                else if (namedType.kind == CXTypeKind.CXType_Record)
                 {
+                    // 真正的结构体/类
                     arrayInfo.IsStructArray = true;
                     arrayInfo.StructTypeName = elementType.Spelling.CString;
                     LogHelper.WriteDebug($"识别到结构体数组：{arrayInfo.Name}, 元素类型：{arrayInfo.StructTypeName}");
                 }
                 else
                 {
-                    LogHelper.WriteDebug($"识别到枚举数组：{arrayInfo.Name}, 元素类型：{elementType.Spelling.CString}");
+                    // Typedef 或其他类型（如 const uint8_t），视为普通数组
+                    LogHelper.WriteDebug($"识别到普通数组：{arrayInfo.Name}, 元素类型：{elementType.Spelling.CString}");
                 }
             }
             
