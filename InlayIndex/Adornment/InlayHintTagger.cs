@@ -34,6 +34,7 @@ namespace InlayIndex.Adornment
     public class InlayHintTagger : ITagger<IntraTextAdornmentTag>
     {
         private readonly ITextBuffer _buffer;
+        private readonly Dictionary<int, Border> _elementCache = new Dictionary<int, Border>();
         private bool _subscribed;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
@@ -59,6 +60,8 @@ namespace InlayIndex.Adornment
 
         private void OnTagsUpdated(object sender, EventArgs e)
         {
+            _elementCache.Clear();
+            LogHelper.WriteDebug("[Tagger-B] TagsUpdated → 清空元素缓存");
             var snapshot = _buffer.CurrentSnapshot;
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(
                 new SnapshotSpan(snapshot, 0, snapshot.Length)));
@@ -111,7 +114,11 @@ namespace InlayIndex.Adornment
                 if (!inVisibleRange)
                     continue;
 
-                var element = CreateAdornmentElement(hint);
+                if (!_elementCache.TryGetValue(hint.StartPosition, out var element))
+                {
+                    element = CreateAdornmentElement(hint);
+                    _elementCache[hint.StartPosition] = element;
+                }
                 var tag = new IntraTextAdornmentTag(element, null, PositionAffinity.Predecessor);
                 yield return new TagSpan<IntraTextAdornmentTag>(span, tag);
             }
