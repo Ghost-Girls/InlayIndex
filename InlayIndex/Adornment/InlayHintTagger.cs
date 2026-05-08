@@ -33,7 +33,6 @@ namespace InlayIndex.Adornment
 
     public class InlayHintTagger : ITagger<IntraTextAdornmentTag>
     {
-        private readonly ITextView _view;
         private readonly ITextBuffer _buffer;
         private bool _subscribed;
 
@@ -41,7 +40,6 @@ namespace InlayIndex.Adornment
 
         public InlayHintTagger(ITextView view, ITextBuffer buffer)
         {
-            _view = view;
             _buffer = buffer;
             _subscribed = false;
             LogHelper.WriteDebug("[Tagger-B] InlayHintTagger 构造函数");

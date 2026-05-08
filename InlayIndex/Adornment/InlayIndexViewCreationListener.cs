@@ -1,6 +1,5 @@
 using EnvDTE;
 using EnvDTE80;
-using InlayIndex.Models;
 using InlayIndex.Parser;
 using InlayIndex.Utils;
 using Microsoft.VisualStudio.Shell;
@@ -63,7 +62,7 @@ namespace InlayIndex.Adornment
                     manager = textView.TextBuffer.Properties.GetOrCreateSingletonProperty(
                         typeof(InlayHintManager),
                         () => new InlayHintManager(textView.TextBuffer));
-                    LogHelper.WriteDebug($"[视图] InlayHintManager 获取成功");
+                    LogHelper.WriteDebug("[视图] InlayHintManager 获取成功");
                 }
                 catch (Exception ex)
                 {
@@ -87,24 +86,8 @@ namespace InlayIndex.Adornment
                             if (token.IsCancellationRequested) return;
 
                             var snapshot = textView.TextBuffer.CurrentSnapshot;
-                            LogHelper.WriteDebug($"[视图] ChangedLowPriority 重解析：版本={snapshot.Version.VersionNumber}");
-
-                            var text = snapshot.GetText();
-                            var docPath = GetFilePath(textView);
-                            var compilationArgs = new[] { "-x", "c++", "-std=c++17", "-ferror-limit=0" };
-                            var parseResult = parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath, solutionDir);
-
-                            if (!parseResult.Success)
-                            {
-                                LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
-                                return;
-                            }
-
-                            var hintTags = generator.GenerateTags(parseResult, snapshot);
-                            LogHelper.WriteDebug($"[视图] 生成 {hintTags.Count} 个标签，更新管理器...");
-
                             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                            manager.UpdateTags(hintTags);
+                            DoParseAndPlace(textView, parser, generator, manager, snapshot, solutionDir);
                         }
                         catch (OperationCanceledException) { }
                         catch (Exception ex)
@@ -116,7 +99,7 @@ namespace InlayIndex.Adornment
 
                 LogHelper.WriteDebug("[视图] 触发初始解析...");
                 var initSnapshot = textView.TextBuffer.CurrentSnapshot;
-                ParseAndUpdate(textView, manager, parser, generator, initSnapshot, solutionDir);
+                DoParseAndPlace(textView, parser, generator, manager, initSnapshot, solutionDir);
             }
             catch (Exception ex)
             {
@@ -124,42 +107,33 @@ namespace InlayIndex.Adornment
             }
         }
 
-        private void ParseAndUpdate(
+        private void DoParseAndPlace(
             IWpfTextView textView,
-            InlayHintManager manager,
             ClangParser parser,
             InlayHintGenerator generator,
+            InlayHintManager manager,
             ITextSnapshot snapshot,
             string solutionDir)
         {
-            try
+            LogHelper.WriteDebug($"[视图] 解析开始，版本={snapshot.Version.VersionNumber}，文本长度={snapshot.Length}");
+
+            var text = snapshot.GetText();
+            var docPath = GetFilePath(textView);
+            var compilationArgs = new[] { "-x", "c++", "-std=c++17", "-ferror-limit=0" };
+            var parseResult = parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath, solutionDir);
+
+            LogHelper.WriteDebug($"[视图] ParseCode 完成，成功={parseResult.Success}");
+
+            if (!parseResult.Success)
             {
-                LogHelper.WriteDebug($"[视图] ParseAndUpdate 开始，文本长度={snapshot.Length}");
-
-                var text = snapshot.GetText();
-                var docPath = GetFilePath(textView);
-
-                var compilationArgs = new[] { "-x", "c++", "-std=c++17", "-ferror-limit=0" };
-                var parseResult = parser.ParseCode(text, "temp.cpp", compilationArgs, snapshot, docPath, solutionDir);
-
-                LogHelper.WriteDebug($"[视图] ParseCode 完成，成功={parseResult.Success}");
-
-                if (!parseResult.Success)
-                {
-                    LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
-                    return;
-                }
-
-                var hintTags = generator.GenerateTags(parseResult, snapshot);
-                LogHelper.WriteDebug($"[视图] 生成 {hintTags.Count} 个标签");
-
-                manager.UpdateTags(hintTags);
-                LogHelper.WriteDebug($"[视图] 管理器已更新 → TagsUpdated 事件发送给 Tagger");
+                LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
+                return;
             }
-            catch (Exception ex)
-            {
-                LogHelper.WriteError("ParseAndUpdate 异常", ex);
-            }
+
+            var hintTags = generator.GenerateTags(parseResult, snapshot);
+            LogHelper.WriteDebug($"[视图] 生成 {hintTags.Count} 个标签 → 更新管理器");
+
+            manager.UpdateTags(hintTags);
         }
 
         private static string GetFilePath(IWpfTextView textView)
