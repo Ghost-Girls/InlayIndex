@@ -20,6 +20,8 @@ namespace InlayIndex.Adornment
         private bool _isDisposed;
         private int _renderGeneration;
 
+        public event EventHandler TagsUpdated;
+
         public List<InlayHintTag> HintTags
         {
             get { return _hintTags; }
@@ -49,9 +51,10 @@ namespace InlayIndex.Adornment
 
         public void UpdateTags(List<InlayHintTag> hintTags)
         {
-            LogHelper.WriteDebug($"[渲染] UpdateTags：旧数据标签 {_hintTags.Count} → 新数据标签 {hintTags.Count}，清空 adornmentCache（原 {_adornmentCache.Count} 项）");
+            LogHelper.WriteDebug($"[管理器] UpdateTags：旧 {_hintTags.Count} → 新 {hintTags.Count}");
             _hintTags = new List<InlayHintTag>(hintTags);
             _adornmentCache.Clear();
+            TagsUpdated?.Invoke(this, EventArgs.Empty);
         }
 
         public List<InlayHintTag> GetHintsForSpan(SnapshotSpan visibleSpan)

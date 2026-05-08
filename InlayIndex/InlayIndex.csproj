@@ -62,7 +62,8 @@
     <Compile Include="Parser\ClangParser.cs" />
     <Compile Include="Parser\VisualGDBConfigDetector.cs" />
     <Compile Include="Parser\InlayHintGenerator.cs" />
-    <Compile Include="Adornment\InlayIndexImprovedTagger.cs" />
+    <Compile Include="Adornment\InlayHintManager.cs" />
+    <Compile Include="Adornment\InlayHintTagger.cs" />
     <Compile Include="Adornment\InlayIndexViewCreationListener.cs" />
     <Compile Include="Services\SolutionService.cs" />
     <Compile Include="Utils\PositionMapper.cs" />
