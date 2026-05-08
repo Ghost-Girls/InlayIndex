@@ -15,10 +15,9 @@ namespace InlayIndex.Parser
     {
         private CXIndex _index;
         private bool _disposed = false;
-        // 保存当前解析的原始 UTF-16 字符串，用于 offset 转换
         private string _currentCode = string.Empty;
-        // 保存当前解析的文件名
         private string _currentFileName = "temp.cpp";
+        private readonly Dictionary<string, VisualGDBConfig> _configCache = new Dictionary<string, VisualGDBConfig>();
 
         [DllImport("libclang")]
         private static extern void clang_getFileLocation(CXSourceLocation location, out CXFile file, out uint line, out uint column, out uint offset);
@@ -172,86 +171,10 @@ namespace InlayIndex.Parser
             try
             {
                 var args = new List<string>(compilationArgs ?? new string[] { "-x", "c++" });
-                
-                // 自动探测 VisualGDB/vcxproj 项目配置（仅在提供有效文件路径时）
+
                 if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                 {
-                    try
-                    {
-                        LogHelper.WriteParseInfo("配置探测：开始探测项目配置...");
-                        
-                        // 获取配置选项（通过 InlayIndexPackage）
-                        bool enableVisualGDB = true;
-                        bool enableVcxproj = true;
-                        bool enableCmake = false;
-                        
-                        try
-                        {
-                            var optionsPage = InlayIndex.InlayIndexPackage.Instance?.GetOptionsPage() as InlayIndex.Options.InlayIndexOptionsPage;
-                            if (optionsPage != null)
-                            {
-                                enableVisualGDB = optionsPage.EnableVisualGDBDetection;
-                                enableVcxproj = optionsPage.EnableVcxprojDetection;
-                                enableCmake = optionsPage.EnableCmakeDetection;
-                            }
-                        }
-                        catch (Exception optEx)
-                        {
-                            LogHelper.WriteDebug($"配置探测：获取选项失败，使用默认值：{optEx.Message}");
-                        }
-                        
-                        var detector = new VisualGDBConfigDetector(enableVisualGDB, enableVcxproj, enableCmake);
-                        VisualGDBConfig config = null;
-                        
-                        // 优先使用 DTE API 获取的解决方案目录
-                        if (!string.IsNullOrEmpty(solutionDir) && Directory.Exists(solutionDir))
-                        {
-                            LogHelper.WriteParseInfo($"配置探测：使用 DTE API 提供的解决方案目录：{solutionDir}");
-                            config = detector.DetectConfigFromSolutionDir(solutionDir, filePath);
-                        }
-                        
-                        // 如果 DTE 目录探测失败，尝试自动探测
-                        if (config == null)
-                        {
-                            LogHelper.WriteParseInfo("配置探测：DTE 目录探测失败或未提供，尝试自动探测...");
-                            config = detector.DetectConfig(filePath);
-                        }
-                        
-                        if (config != null)
-                        {
-                            LogHelper.WriteParseInfo($"配置探测：成功 - 找到项目配置目录：{config.ProjectDir}");
-                            
-                            // 添加 Include 路径
-                            foreach (var includePath in config.IncludePaths)
-                            {
-                                if (Directory.Exists(includePath))
-                                {
-                                    args.Add($"-I{includePath}");
-                                    //LogHelper.WriteParseInfo($"配置探测：添加 Include 路径：{includePath}");
-                                }
-                            }
-                            
-                            // 添加预定义宏
-                            foreach (var def in config.PreprocessorDefs)
-                            {
-                                if (!string.IsNullOrWhiteSpace(def))
-                                {
-                                    args.Add($"-D{def}");
-                                    //LogHelper.WriteParseInfo($"配置探测：添加预定义宏：{def}");
-                                }
-                            }
-                            
-                            LogHelper.WriteParseInfo($"配置探测：完成 - 共添加 {config.IncludePaths.Count} 个 Include 路径，{config.PreprocessorDefs.Count} 个预定义宏");
-                        }
-                        else
-                        {
-                            LogHelper.WriteParseInfo("配置探测：未找到项目配置，使用默认参数");
-                        }
-                    }
-                    catch (Exception detectEx)
-                    {
-                        LogHelper.WriteError("配置探测失败，使用默认参数", detectEx);
-                    }
+                    ApplyCachedConfig(ref args, filePath, solutionDir);
                 }
                 else
                 {
@@ -388,6 +311,100 @@ namespace InlayIndex.Parser
             }
 
             return result;
+        }
+
+        private void ApplyCachedConfig(ref List<string> args, string filePath, string solutionDir)
+        {
+            try
+            {
+                string cacheKey = solutionDir ?? Path.GetDirectoryName(filePath) ?? filePath;
+                lock (_configCache)
+                {
+                    if (_configCache.TryGetValue(cacheKey, out VisualGDBConfig cached))
+                    {
+                        LogHelper.WriteParseInfo($"配置探测：命中缓存 → {cached.ProjectDir}");
+                        AppendConfigToArgs(ref args, cached);
+                        return;
+                    }
+                }
+
+                LogHelper.WriteParseInfo("配置探测：开始探测项目配置...");
+                var config = ProbeConfig(filePath, solutionDir);
+
+                if (config != null)
+                {
+                    lock (_configCache)
+                    {
+                        _configCache[cacheKey] = config;
+                    }
+                    LogHelper.WriteParseInfo($"配置探测：成功并已缓存 → {config.ProjectDir}");
+                    AppendConfigToArgs(ref args, config);
+                }
+                else
+                {
+                    LogHelper.WriteParseInfo("配置探测：未找到项目配置，使用默认参数");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.WriteError("配置探测失败，使用默认参数", ex);
+            }
+        }
+
+        private VisualGDBConfig ProbeConfig(string filePath, string solutionDir)
+        {
+            bool enableVisualGDB = true;
+            bool enableVcxproj = true;
+            bool enableCmake = false;
+
+            try
+            {
+                var optionsPage = InlayIndex.InlayIndexPackage.Instance?.GetOptionsPage() as InlayIndex.Options.InlayIndexOptionsPage;
+                if (optionsPage != null)
+                {
+                    enableVisualGDB = optionsPage.EnableVisualGDBDetection;
+                    enableVcxproj = optionsPage.EnableVcxprojDetection;
+                    enableCmake = optionsPage.EnableCmakeDetection;
+                }
+            }
+            catch (Exception optEx)
+            {
+                LogHelper.WriteDebug($"配置探测：获取选项失败，使用默认值：{optEx.Message}");
+            }
+
+            var detector = new VisualGDBConfigDetector(enableVisualGDB, enableVcxproj, enableCmake);
+            VisualGDBConfig config = null;
+
+            if (!string.IsNullOrEmpty(solutionDir) && Directory.Exists(solutionDir))
+            {
+                LogHelper.WriteParseInfo($"配置探测：使用 DTE API 提供的解决方案目录：{solutionDir}");
+                config = detector.DetectConfigFromSolutionDir(solutionDir, filePath);
+            }
+
+            if (config == null)
+            {
+                LogHelper.WriteParseInfo("配置探测：DTE 目录探测失败或未提供，尝试自动探测...");
+                config = detector.DetectConfig(filePath);
+            }
+
+            return config;
+        }
+
+        private void AppendConfigToArgs(ref List<string> args, VisualGDBConfig config)
+        {
+            foreach (var includePath in config.IncludePaths)
+            {
+                if (Directory.Exists(includePath))
+                    args.Add($"-I{includePath}");
+            }
+
+            foreach (var def in config.PreprocessorDefs)
+            {
+                if (!string.IsNullOrWhiteSpace(def))
+                    args.Add($"-D{def}");
+            }
+
+            LogHelper.WriteParseInfo($"配置探测：应用 {config.IncludePaths.Count} 个 Include，{config.PreprocessorDefs.Count} 个宏");
         }
 
         private void VisitChildren(CXCursor cursor, ParseResult result, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
