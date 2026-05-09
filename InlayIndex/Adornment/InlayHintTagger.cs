@@ -36,34 +36,23 @@ namespace InlayIndex.Adornment
     {
         private readonly ITextBuffer _buffer;
         private readonly Dictionary<int, Border> _elementCache = new Dictionary<int, Border>();
-        private bool _subscribed;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
         public InlayHintTagger(ITextView view, ITextBuffer buffer)
         {
             _buffer = buffer;
-            _subscribed = false;
-            EnsureSubscribed();
-            LogHelper.WriteDebug("[Tagger-B] InlayHintTagger 构造函数");
-        }
-
-        private void EnsureSubscribed()
-        {
-            if (_subscribed) return;
 
             if (_buffer.Properties.TryGetProperty(typeof(InlayHintManager), out InlayHintManager manager))
             {
                 manager.TagsUpdated += OnTagsUpdated;
-                _subscribed = true;
-                LogHelper.WriteDebug("[Tagger-B] 延迟订阅 TagsUpdated 成功");
+                LogHelper.WriteDebug("[Tagger-B] 构造函数中订阅 TagsUpdated 成功");
             }
         }
 
         private void OnTagsUpdated(object sender, EventArgs e)
         {
             _elementCache.Clear();
-            LogHelper.WriteDebug("[Tagger-B] TagsUpdated → 清空元素缓存");
             var snapshot = _buffer.CurrentSnapshot;
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(
                 new SnapshotSpan(snapshot, 0, snapshot.Length)));
@@ -76,8 +65,6 @@ namespace InlayIndex.Adornment
 
             if (!_buffer.Properties.TryGetProperty(typeof(InlayHintManager), out InlayHintManager manager))
                 yield break;
-
-            EnsureSubscribed();
 
             var snapshot = spans[0].Snapshot;
             var hintTags = manager.HintTags;
