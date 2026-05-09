@@ -53,6 +53,19 @@ namespace InlayIndex.Adornment
                     parser = new ClangParser();
                     generator = new InlayHintGenerator(optionsPage);
                     LogHelper.WriteDebug("[视图] ClangParser + InlayHintGenerator 创建成功");
+
+                    textView.Closed += (s, e) =>
+                    {
+                        try
+                        {
+                            parser.Dispose();
+                            LogHelper.WriteDebug("[视图] TextView 关闭 → ClangParser 已释放");
+                        }
+                        catch (Exception disposeEx)
+                        {
+                            LogHelper.WriteError("ClangParser Dispose 异常", disposeEx);
+                        }
+                    };
                 }
                 catch (Exception ex)
                 {
@@ -72,6 +85,9 @@ namespace InlayIndex.Adornment
                     return;
                 }
 
+                var debounceMs = optionsPage.DebounceDelayMs;
+                LogHelper.WriteDebug($"[视图] 防抖延迟={debounceMs}ms");
+
                 System.Threading.CancellationTokenSource cts = null;
 
                 textView.TextBuffer.ChangedLowPriority += (s, e) =>
@@ -84,7 +100,7 @@ namespace InlayIndex.Adornment
                     {
                         try
                         {
-                            await Task.Delay(500, token);
+                            await Task.Delay(debounceMs, token);
                             if (token.IsCancellationRequested) return;
 
                             var snapshot = textView.TextBuffer.CurrentSnapshot;

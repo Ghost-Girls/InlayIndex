@@ -41,6 +41,7 @@ namespace InlayIndex.Options
         private bool enableVisualGDBDetection = true;
         private bool enableVcxprojDetection = true;
         private bool enableCmakeDetection = false;
+        private int debounceDelayMs = 500;
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -210,6 +211,16 @@ namespace InlayIndex.Options
         {
             get => enableCmakeDetection;
             set => enableCmakeDetection = value;
+        }
+
+        [Category("性能配置")]
+        [DisplayName("防抖延迟")]
+        [Description("编辑后等待多久才重新解析 (100-2000ms)。数值越小响应越快但越耗CPU")]
+        [DefaultValue(500)]
+        public int DebounceDelayMs
+        {
+            get => debounceDelayMs;
+            set => debounceDelayMs = System.Math.Max(100, System.Math.Min(2000, value));
         }
 
         public Color GetForegroundColor()

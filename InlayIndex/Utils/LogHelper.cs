@@ -183,6 +183,11 @@ namespace InlayIndex.Utils
         {
             WriteLog($"[视图] {message}", LogLevel.Info);
         }
+
+        public static void WritePerf(string message)
+        {
+            WriteLog($"[性能] {message}", LogLevel.Debug);
+        }
     }
 
     public enum LogLevel
