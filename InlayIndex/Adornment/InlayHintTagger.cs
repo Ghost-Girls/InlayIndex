@@ -15,6 +15,7 @@ namespace InlayIndex.Adornment
 {
     [Export(typeof(IViewTaggerProvider))]
     [ContentType("C/C++")]
+    [TextViewRole(PredefinedTextViewRoles.PrimaryDocument)]
     [TagType(typeof(IntraTextAdornmentTag))]
     public class InlayHintTaggerProvider : IViewTaggerProvider
     {
