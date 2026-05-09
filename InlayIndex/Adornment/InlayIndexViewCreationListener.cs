@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -153,7 +154,8 @@ namespace InlayIndex.Adornment
 
             if (!parseResult.Success)
             {
-                LogHelper.WriteError($"解析失败：{parseResult.ErrorMessage}", null);
+                LogHelper.WriteDebug($"[视图] 解析失败（{parseResult.ErrorMessage}），清除旧标签");
+                manager.UpdateTags(new List<InlayIndex.Models.InlayHintTag>());
                 return;
             }
 

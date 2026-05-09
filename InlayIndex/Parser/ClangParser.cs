@@ -202,8 +202,9 @@ namespace InlayIndex.Parser
                 
                 unsafe
                 {
-                    // 方案 1：使用 unsaved file 直接解析内存中的代码
-                    fixed (char* filenamePtr = fileName)
+                    byte[] utf8Filename = System.Text.Encoding.UTF8.GetBytes(fileName);
+
+                    fixed (byte* filenamePtr = utf8Filename)
                     fixed (byte* contentsPtr = utf8Bytes)
                     {
                         var unsavedFile = new CXUnsavedFile[1];
