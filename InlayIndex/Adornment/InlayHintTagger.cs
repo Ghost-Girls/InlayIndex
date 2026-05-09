@@ -43,6 +43,7 @@ namespace InlayIndex.Adornment
         {
             _buffer = buffer;
             _subscribed = false;
+            EnsureSubscribed();
             LogHelper.WriteDebug("[Tagger-B] InlayHintTagger 构造函数");
         }
 

@@ -25,8 +25,12 @@ namespace InlayIndex.Adornment
         {
             LogHelper.WriteViewInfo($"视图创建 - 文件：{GetFilePath(textView)}");
 
+            textView.TextBuffer.Properties.GetOrCreateSingletonProperty(
+                typeof(InlayHintManager),
+                () => new InlayHintManager(textView.TextBuffer));
+
             textView.VisualElement.Dispatcher.BeginInvoke(
-                DispatcherPriority.ContextIdle,
+                DispatcherPriority.Background,
                 new Action(() => InitializeHints(textView)));
         }
 
@@ -59,14 +63,12 @@ namespace InlayIndex.Adornment
                 InlayHintManager manager;
                 try
                 {
-                    manager = textView.TextBuffer.Properties.GetOrCreateSingletonProperty(
-                        typeof(InlayHintManager),
-                        () => new InlayHintManager(textView.TextBuffer));
-                    LogHelper.WriteDebug("[视图] InlayHintManager 获取成功");
+                    manager = textView.TextBuffer.Properties.GetProperty<InlayHintManager>(typeof(InlayHintManager));
+                    LogHelper.WriteDebug("[视图] InlayHintManager 获取成功（已在 TextViewCreated 创建）");
                 }
                 catch (Exception ex)
                 {
-                    LogHelper.WriteError("创建 InlayHintManager 异常", ex);
+                    LogHelper.WriteError("获取 InlayHintManager 异常", ex);
                     return;
                 }
 
@@ -86,8 +88,7 @@ namespace InlayIndex.Adornment
                             if (token.IsCancellationRequested) return;
 
                             var snapshot = textView.TextBuffer.CurrentSnapshot;
-                            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                            DoParseAndPlace(textView, parser, generator, manager, snapshot, solutionDir);
+                            await DoParseAndPlace(textView, parser, generator, manager, snapshot, solutionDir);
                         }
                         catch (OperationCanceledException) { }
                         catch (Exception ex)
@@ -97,9 +98,19 @@ namespace InlayIndex.Adornment
                     });
                 };
 
-                LogHelper.WriteDebug("[视图] 触发初始解析...");
+                LogHelper.WriteDebug("[视图] 触发初始解析（后台线程）...");
                 var initSnapshot = textView.TextBuffer.CurrentSnapshot;
-                DoParseAndPlace(textView, parser, generator, manager, initSnapshot, solutionDir);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await DoParseAndPlace(textView, parser, generator, manager, initSnapshot, solutionDir);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.WriteError("初始解析异常", ex);
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -107,7 +118,7 @@ namespace InlayIndex.Adornment
             }
         }
 
-        private void DoParseAndPlace(
+        private async System.Threading.Tasks.Task DoParseAndPlace(
             IWpfTextView textView,
             ClangParser parser,
             InlayHintGenerator generator,
@@ -133,6 +144,7 @@ namespace InlayIndex.Adornment
             var hintTags = generator.GenerateTags(parseResult, snapshot);
             LogHelper.WriteDebug($"[视图] 生成 {hintTags.Count} 个标签 → 更新管理器");
 
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             manager.UpdateTags(hintTags);
         }
 
