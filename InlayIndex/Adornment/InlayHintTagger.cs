@@ -135,7 +135,7 @@ namespace InlayIndex.Adornment
                 FontSize = hintTag.FontSize,
                 FontWeight = hintTag.FontWeight,
                 Foreground = new SolidColorBrush(hintTag.ForegroundColor.Value),
-                Padding = new Thickness(2, 0.5, 2, 3.5),
+                Padding = new Thickness(2, 1.25, 2, 2.75),
                 TextAlignment = TextAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
