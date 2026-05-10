@@ -31,7 +31,7 @@ namespace InlayIndex.Adornment
                 () => new InlayHintManager(textView.TextBuffer));
 
             textView.VisualElement.Dispatcher.BeginInvoke(
-                DispatcherPriority.Background,
+                DispatcherPriority.Loaded,
                 new Action(() => InitializeHints(textView)));
         }
 
@@ -47,18 +47,94 @@ namespace InlayIndex.Adornment
                 var optionsPage = InlayIndexPackage.Instance?.GetOptionsPage()
                     ?? Options.InlayIndexOptionsPage.Default;
 
+                InlayHintManager manager;
+                try
+                {
+                    manager = textView.TextBuffer.Properties.GetProperty<InlayHintManager>(typeof(InlayHintManager));
+                    LogHelper.WriteDebug("[视图] InlayHintManager 获取成功（已在 TextViewCreated 创建）");
+                }
+                catch (Exception ex)
+                {
+                    LogHelper.WriteError("获取 InlayHintManager 异常", ex);
+                    return;
+                }
+
                 ClangParser parser;
                 InlayHintGenerator generator;
+                int debounceMs = optionsPage.DebounceDelayMs;
                 try
                 {
                     parser = new ClangParser();
                     generator = new InlayHintGenerator(optionsPage);
                     LogHelper.WriteDebug("[视图] ClangParser + InlayHintGenerator 创建成功");
+                    LogHelper.WriteDebug($"[视图] 防抖延迟={debounceMs}ms");
+
+                    EventHandler<Options.InlayIndexOptionsPage> onSettingsApplied = null;
+                    onSettingsApplied = (s, updatedOptions) =>
+                    {
+                        LogHelper.WriteDebug("[视图] 选项已应用 → 同步 Default 单例并更新 generator 引用");
+                        generator = new InlayHintGenerator(Options.InlayIndexOptionsPage.Default);
+                        debounceMs = Options.InlayIndexOptionsPage.Default.DebounceDelayMs;
+                        LogHelper.WriteDebug($"[视图] generator 已更新，新防抖延迟={debounceMs}ms");
+
+                        var freshGenerator = new InlayHintGenerator(updatedOptions);
+                        var snap = textView.TextBuffer.CurrentSnapshot;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await DoParseAndPlace(textView, parser, freshGenerator, manager, snap, solutionDir);
+                            }
+                            catch (Exception ex)
+                            {
+                                LogHelper.WriteError("SettingsApplied 重解析异常", ex);
+                            }
+                        });
+                    };
+                    Options.InlayIndexOptionsPage.SettingsApplied += onSettingsApplied;
+
+                    bool packageInitSubscribed = false;
+                    EventHandler<Options.InlayIndexOptionsPage> onPackageInit = null;
+                    onPackageInit = (s, loadedPage) =>
+                    {
+                        Options.InlayIndexOptionsPage.UnsubscribePackageInit(onPackageInit);
+                        packageInitSubscribed = true;
+                        LogHelper.WriteDebug("[视图] 包初始化完成 → 检查是否需要更新设置");
+
+                        if (InlayIndexPackage.Instance == null)
+                            return;
+
+                        var page = InlayIndexPackage.Instance.GetOptionsPage();
+                        generator = new InlayHintGenerator(page);
+                        debounceMs = page.DebounceDelayMs;
+                        LogHelper.WriteDebug($"[视图] generator 已通过 PackageInitialized 更新，防抖延迟={debounceMs}ms");
+
+                        var snap = textView.TextBuffer.CurrentSnapshot;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await DoParseAndPlace(textView, parser, generator, manager, snap, solutionDir);
+                            }
+                            catch (Exception ex)
+                            {
+                                LogHelper.WriteError("PackageInitialized 重解析异常", ex);
+                            }
+                        });
+                    };
+                    if (InlayIndexPackage.Instance == null)
+                    {
+                        Options.InlayIndexOptionsPage.SubscribePackageInit(onPackageInit);
+                        LogHelper.WriteDebug("[视图] 包未初始化，已订阅 PackageInitialized 事件");
+                    }
 
                     textView.Closed += (s, e) =>
                     {
                         try
                         {
+                            Options.InlayIndexOptionsPage.SettingsApplied -= onSettingsApplied;
+                            if (!packageInitSubscribed && onPackageInit != null)
+                                Options.InlayIndexOptionsPage.UnsubscribePackageInit(onPackageInit);
                             parser.Dispose();
                             LogHelper.WriteDebug("[视图] TextView 关闭 → ClangParser 已释放");
                         }
@@ -73,21 +149,6 @@ namespace InlayIndex.Adornment
                     LogHelper.WriteError("创建解析器/生成器异常", ex);
                     return;
                 }
-
-                InlayHintManager manager;
-                try
-                {
-                    manager = textView.TextBuffer.Properties.GetProperty<InlayHintManager>(typeof(InlayHintManager));
-                    LogHelper.WriteDebug("[视图] InlayHintManager 获取成功（已在 TextViewCreated 创建）");
-                }
-                catch (Exception ex)
-                {
-                    LogHelper.WriteError("获取 InlayHintManager 异常", ex);
-                    return;
-                }
-
-                var debounceMs = optionsPage.DebounceDelayMs;
-                LogHelper.WriteDebug($"[视图] 防抖延迟={debounceMs}ms");
 
                 System.Threading.CancellationTokenSource cts = null;
 

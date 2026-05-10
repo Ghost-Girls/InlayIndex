@@ -1,0 +1,164 @@
+<UserControl x:Class="InlayIndex.Options.InlayIndexOptionsPageControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:InlayIndex.Options"
+             Loaded="UserControl_Loaded">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
+    <StackPanel>
+      <TextBlock Text="InlayIndex 设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,14"/>
+
+      <GroupBox Header="功能开关" Margin="0,0,0,8">
+        <StackPanel>
+          <CheckBox x:Name="chkEnableArrayIndex" Content="启用数组索引标签" Margin="4"/>
+          <CheckBox x:Name="chkEnableEnumValue" Content="启用枚举值标签" Margin="4"/>
+          <CheckBox x:Name="chkEnableStructField" Content="启用结构体字段名显示" Margin="4"/>
+        </StackPanel>
+      </GroupBox>
+
+      <GroupBox Header="样式配置" Margin="0,0,0,8">
+        <Grid Margin="4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="颜色主题：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="cmbTheme" Grid.Row="0" Grid.Column="1" Margin="0,4">
+            <ComboBoxItem Tag="Orange">橙色</ComboBoxItem>
+            <ComboBoxItem Tag="Blue">蓝色</ComboBoxItem>
+            <ComboBoxItem Tag="Green">绿色</ComboBoxItem>
+            <ComboBoxItem Tag="HighContrast">高对比度</ComboBoxItem>
+          </ComboBox>
+
+          <TextBlock Text="字体大小：" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,4">
+            <Slider x:Name="sldFontSize" Minimum="5" Maximum="12" TickFrequency="1" Width="200" IsSnapToTickEnabled="True"/>
+            <TextBlock Text="{Binding Value, ElementName=sldFontSize}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+
+          <TextBlock Text="字体粗细：" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="cmbFontWeight" Grid.Row="2" Grid.Column="1" Margin="0,4">
+            <ComboBoxItem Tag="Normal">普通</ComboBoxItem>
+            <ComboBoxItem Tag="Medium">中等</ComboBoxItem>
+            <ComboBoxItem Tag="SemiBold">半粗体</ComboBoxItem>
+            <ComboBoxItem Tag="Bold" IsSelected="True">粗体</ComboBoxItem>
+          </ComboBox>
+
+          <TextBlock Text="背景透明度：" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="1" Margin="0,4">
+            <Slider x:Name="sldBgOpacity" Minimum="0" Maximum="100" TickFrequency="5" Width="200" IsSnapToTickEnabled="True"/>
+            <TextBlock Text="{Binding Value, ElementName=sldBgOpacity}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+
+          <TextBlock Text="标签背景色：" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,4">
+            <CheckBox x:Name="chkAutoBgColor" Content="自动根据前景色生成深色背景色" Margin="0,0,0,4" Checked="chkAutoBgColor_Changed" Unchecked="chkAutoBgColor_Changed"/>
+            <TextBox x:Name="txtBgColor" PreviewKeyDown="HexTextBox_PreviewKeyDown"/>
+          </StackPanel>
+
+          <TextBlock Text="启用深度颜色：" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <CheckBox x:Name="chkEnableDepthColors" Grid.Row="5" Grid.Column="1" Margin="0,4"/>
+
+          <TextBlock Text="深度颜色：" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <TextBox x:Name="txtDepthColors" Grid.Row="6" Grid.Column="1" Margin="0,4" PreviewKeyDown="HexTextBox_PreviewKeyDown"/>
+        </Grid>
+      </GroupBox>
+
+      <GroupBox Header="显示限制" Margin="0,0,0,8">
+        <Grid Margin="4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="最大显示维度：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" Margin="0,4">
+            <Slider x:Name="sldMaxDims" Minimum="1" Maximum="4" TickFrequency="1" Width="200" IsSnapToTickEnabled="True"/>
+            <TextBlock Text="{Binding Value, ElementName=sldMaxDims}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+
+          <TextBlock Text="最大元素数量：" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,4">
+            <Slider x:Name="sldMaxElements" Minimum="100" Maximum="10000" TickFrequency="100" Width="200" IsSnapToTickEnabled="True"/>
+            <TextBlock Text="{Binding Value, ElementName=sldMaxElements}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+        </Grid>
+      </GroupBox>
+
+      <GroupBox Header="语言支持" Margin="0,0,0,8">
+        <StackPanel>
+          <CheckBox x:Name="chkEnableC" Content="启用 C 语言" Margin="4"/>
+          <CheckBox x:Name="chkEnableCpp" Content="启用 C++ 语言" Margin="4"/>
+        </StackPanel>
+      </GroupBox>
+
+      <GroupBox Header="显示设置 &amp; 性能" Margin="0,0,0,8">
+        <Grid Margin="4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="索引显示模式：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="cmbIndexDisplay" Grid.Row="0" Grid.Column="1" Margin="0,4">
+            <ComboBoxItem Tag="Simple">简洁索引</ComboBoxItem>
+            <ComboBoxItem Tag="Full">完整索引</ComboBoxItem>
+          </ComboBox>
+
+          <TextBlock Text="防抖延迟 (ms)：" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,4">
+            <Slider x:Name="sldDebounce" Minimum="100" Maximum="2000" TickFrequency="100" Width="200" IsSnapToTickEnabled="True"/>
+            <TextBlock Text="{Binding Value, ElementName=sldDebounce}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+        </Grid>
+      </GroupBox>
+
+      <GroupBox Header="工程感知" Margin="0,0,0,8">
+        <StackPanel>
+          <CheckBox x:Name="chkEnableVgdb" Content="启用 VisualGDB 配置探测" Margin="4"/>
+          <CheckBox x:Name="chkEnableVcxproj" Content="启用 vcxproj 配置探测" Margin="4"/>
+          <CheckBox x:Name="chkEnableCmake" Content="启用 CMake 配置探测" Margin="4"/>
+        </StackPanel>
+      </GroupBox>
+
+      <GroupBox Header="日志配置" Margin="0,0,0,8">
+        <Grid Margin="4">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="日志目录：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <TextBox x:Name="txtLogDir" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+        </Grid>
+      </GroupBox>
+
+      <Separator Margin="0,10"/>
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+        <Button x:Name="btnReset" Content="恢复默认设置" Width="140" Height="32" Click="btnReset_Click" Margin="0,0,8,0"/>
+      </StackPanel>
+
+      <TextBlock x:Name="txtStatus" Text="" Foreground="Gray" TextAlignment="Center" FontSize="12"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

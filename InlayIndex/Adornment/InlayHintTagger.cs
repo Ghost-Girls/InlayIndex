@@ -36,22 +36,34 @@ namespace InlayIndex.Adornment
     {
         private readonly ITextBuffer _buffer;
         private readonly Dictionary<int, Border> _elementCache = new Dictionary<int, Border>();
+        private InlayHintManager _manager;
+        private bool _subscribed;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
         public InlayHintTagger(ITextView view, ITextBuffer buffer)
         {
             _buffer = buffer;
+            TrySubscribe();
+        }
+
+        private void TrySubscribe()
+        {
+            if (_subscribed)
+                return;
 
             if (_buffer.Properties.TryGetProperty(typeof(InlayHintManager), out InlayHintManager manager))
             {
+                _manager = manager;
                 manager.TagsUpdated += OnTagsUpdated;
-                LogHelper.WriteDebug("[Tagger-B] 构造函数中订阅 TagsUpdated 成功");
+                _subscribed = true;
+                LogHelper.WriteDebug("[Tagger-B] 订阅 TagsUpdated 成功");
             }
         }
 
         private void OnTagsUpdated(object sender, EventArgs e)
         {
+            LogHelper.WriteDebug("[Tagger-B] TagsUpdated → 清空元素缓存，触发 TagsChanged");
             _elementCache.Clear();
             var snapshot = _buffer.CurrentSnapshot;
             TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(
@@ -63,11 +75,13 @@ namespace InlayIndex.Adornment
             if (spans.Count == 0)
                 yield break;
 
-            if (!_buffer.Properties.TryGetProperty(typeof(InlayHintManager), out InlayHintManager manager))
+            TrySubscribe();
+
+            if (_manager == null)
                 yield break;
 
             var snapshot = spans[0].Snapshot;
-            var hintTags = manager.HintTags;
+            var hintTags = _manager.HintTags;
 
             if (hintTags == null || hintTags.Count == 0)
                 yield break;
@@ -130,7 +144,7 @@ namespace InlayIndex.Adornment
             {
                 Child = textBlock,
                 Background = CreateBackgroundBrush(hintTag),
-                CornerRadius = new CornerRadius(3),
+                CornerRadius = new CornerRadius(2),
                 Margin = new Thickness(1, 0, 1, 2.5)
             };
 
@@ -148,11 +162,10 @@ namespace InlayIndex.Adornment
                 return new SolidColorBrush(colorWithOpacity);
             }
 
-            var fgColor = hintTag.ForegroundColor.Value;
-            var opacity2 = Math.Max(0, Math.Min(100, hintTag.BackgroundOpacity));
-            var bgAlpha = (byte)(255 * (opacity2 / 100.0));
-            var bgColor = Color.FromArgb(bgAlpha, fgColor.R, fgColor.G, fgColor.B);
-            return new SolidColorBrush(bgColor);
+            var bgColor = InlayIndex.Options.InlayIndexOptionsPage.Default.GetBackgroundColor();
+            var bgOpacity = Math.Max(0, Math.Min(100, hintTag.BackgroundOpacity));
+            var bgAlpha = (byte)(255 * (bgOpacity / 100.0));
+            return new SolidColorBrush(Color.FromArgb(bgAlpha, bgColor.R, bgColor.G, bgColor.B));
         }
     }
 }

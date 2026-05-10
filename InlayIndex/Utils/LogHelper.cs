@@ -25,8 +25,10 @@ namespace InlayIndex.Utils
 
         public static void SetLogDirectory(string logDirectory)
         {
+            if (_customLogDirectory == logDirectory && IsInitialized)
+                return;
+
             _customLogDirectory = logDirectory;
-            // 重新初始化日志系统，使用新目录
             IsInitialized = false;
             InitializeLogger();
         }
@@ -59,10 +61,12 @@ namespace InlayIndex.Utils
                     {
 #if DEBUG
                         logDir = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
+                        _customLogDirectory = logDir;
 #else
                         logDir = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                             "NexusStudio", "InlayIndex");
+                        _customLogDirectory = logDir;
 #endif
                     }
 

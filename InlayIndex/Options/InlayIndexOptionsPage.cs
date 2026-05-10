@@ -10,6 +10,10 @@ namespace InlayIndex.Options
     public class InlayIndexOptionsPage : DialogPage
     {
         private static InlayIndexOptionsPage _defaultInstance;
+        private InlayIndexOptionsPageControl _pageControl;
+
+        public static event EventHandler<InlayIndexOptionsPage> SettingsApplied;
+        private static event EventHandler<InlayIndexOptionsPage> PackageInitialized;
 
         public static InlayIndexOptionsPage Default
         {
@@ -18,9 +22,88 @@ namespace InlayIndex.Options
                 if (_defaultInstance == null)
                 {
                     _defaultInstance = new InlayIndexOptionsPage();
+                    SettingsStore.LoadInto(_defaultInstance);
                 }
                 return _defaultInstance;
             }
+        }
+
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        protected override System.Windows.Forms.IWin32Window Window
+        {
+            get
+            {
+                if (_pageControl == null)
+                {
+                    _pageControl = new InlayIndexOptionsPageControl();
+                    _pageControl.OptionsPage = this;
+                }
+                return new System.Windows.Forms.Integration.ElementHost { Child = _pageControl };
+            }
+        }
+
+        protected override void OnApply(PageApplyEventArgs args)
+        {
+            _pageControl?.SaveToPage();
+            base.OnApply(args);
+            SyncFrom(this);
+            SettingsStore.Save(this);
+            SettingsApplied?.Invoke(this, this);
+        }
+
+        public static void SubscribePackageInit(EventHandler<InlayIndexOptionsPage> handler)
+        {
+            PackageInitialized += handler;
+        }
+
+        public static void UnsubscribePackageInit(EventHandler<InlayIndexOptionsPage> handler)
+        {
+            PackageInitialized -= handler;
+        }
+
+        internal static void FirePackageInitialized(InlayIndexOptionsPage page)
+        {
+            PackageInitialized?.Invoke(null, page);
+        }
+
+        public override void LoadSettingsFromStorage()
+        {
+            base.LoadSettingsFromStorage();
+            SettingsStore.LoadInto(this);
+        }
+
+        public override void SaveSettingsToStorage()
+        {
+            base.SaveSettingsToStorage();
+            SettingsStore.Save(this);
+        }
+
+        public static void SyncFrom(InlayIndexOptionsPage source)
+        {
+            var def = Default;
+            def.enableArrayIndex = source.enableArrayIndex;
+            def.enableEnumValue = source.enableEnumValue;
+            def.enableStructField = source.enableStructField;
+            def.selectedTheme = source.selectedTheme;
+            def.fontSize = source.fontSize;
+            def.fontWeight = source.fontWeight;
+            def.FontWeightEnum = source.FontWeightEnum;
+            def.backgroundOpacity = source.backgroundOpacity;
+            def.backgroundColorHex = source.backgroundColorHex;
+            def.maxDimensions = source.maxDimensions;
+            def.maxElements = source.maxElements;
+            def.enableC = source.enableC;
+            def.enableCpp = source.enableCpp;
+            def.logDirectory = source.logDirectory;
+            def.indexDisplayMode = source.indexDisplayMode;
+            def.enableDepthColors = source.enableDepthColors;
+            def.depthColors = source.depthColors;
+            def.enableVisualGDBDetection = source.enableVisualGDBDetection;
+            def.enableVcxprojDetection = source.enableVcxprojDetection;
+            def.enableCmakeDetection = source.enableCmakeDetection;
+            def.debounceDelayMs = source.debounceDelayMs;
+            def.useAutoBackgroundColor = source.useAutoBackgroundColor;
         }
 
         private bool enableArrayIndex = true;
@@ -29,19 +112,21 @@ namespace InlayIndex.Options
         private ColorTheme selectedTheme = ColorTheme.Orange;
         private double fontSize = 7;
         private FontWeight fontWeight = FontWeights.Bold;
-        private double backgroundOpacity = 15;
+        private double backgroundOpacity = 80;
+        private string backgroundColorHex = "#101020";
         private int maxDimensions = 4;
-        private int maxElements = 1000;
+        private int maxElements = 10000;
         private bool enableC = true;
         private bool enableCpp = true;
         private string logDirectory = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
         private IndexDisplayMode indexDisplayMode = IndexDisplayMode.Simple;
         private bool enableDepthColors = true;
-        private string depthColors = "#FF0000,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF";
+        private string depthColors = "#E1461E,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF";
         private bool enableVisualGDBDetection = true;
         private bool enableVcxprojDetection = true;
         private bool enableCmakeDetection = false;
-        private int debounceDelayMs = 500;
+        private int debounceDelayMs = 200;
+        private bool useAutoBackgroundColor = false;
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -102,6 +187,16 @@ namespace InlayIndex.Options
         {
             get => backgroundOpacity;
             set => backgroundOpacity = System.Math.Max(0, System.Math.Min(100, value));
+        }
+
+        [Category("样式配置")]
+        [DisplayName("标签背景色")]
+        [Description("标签背景颜色，格式 #RRGGBB，默认 #101020 (暗黑)")]
+        [DefaultValue("#101020")]
+        public string BackgroundColorHex
+        {
+            get => backgroundColorHex;
+            set => backgroundColorHex = value ?? "#101020";
         }
 
         [Category("显示限制")]
@@ -176,7 +271,7 @@ namespace InlayIndex.Options
         [Category("样式配置")]
         [DisplayName("深度颜色")]
         [Description("为数组的每个层级自定义颜色，使用逗号分隔的CSS颜色值")]
-        [DefaultValue("#FF0000,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF")]
+        [DefaultValue("#E1461E,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF")]
         public string DepthColors
         {
             get => depthColors;
@@ -216,11 +311,21 @@ namespace InlayIndex.Options
         [Category("性能配置")]
         [DisplayName("防抖延迟")]
         [Description("编辑后等待多久才重新解析 (100-2000ms)。数值越小响应越快但越耗CPU")]
-        [DefaultValue(500)]
+        [DefaultValue(200)]
         public int DebounceDelayMs
         {
             get => debounceDelayMs;
             set => debounceDelayMs = System.Math.Max(100, System.Math.Min(2000, value));
+        }
+
+        [Category("样式配置")]
+        [DisplayName("自动背景色")]
+        [Description("根据前景色自动生成深色背景色，替代手动输入的背景色")]
+        [DefaultValue(false)]
+        public bool UseAutoBackgroundColor
+        {
+            get => useAutoBackgroundColor;
+            set => useAutoBackgroundColor = value;
         }
 
         public Color GetForegroundColor()
@@ -237,6 +342,80 @@ namespace InlayIndex.Options
                 default:
                     return Color.FromRgb(230, 100, 0);
             }
+        }
+
+        public Color GetBackgroundColor()
+        {
+            if (useAutoBackgroundColor)
+                return GetDerivedBackgroundColor(GetForegroundColor());
+
+            try
+            {
+                var hex = backgroundColorHex?.TrimStart('#') ?? "101020";
+                if (hex.Length == 6)
+                {
+                    byte r = Convert.ToByte(hex.Substring(0, 2), 16);
+                    byte g = Convert.ToByte(hex.Substring(2, 2), 16);
+                    byte b = Convert.ToByte(hex.Substring(4, 2), 16);
+                    return Color.FromRgb(r, g, b);
+                }
+            }
+            catch { }
+            return Color.FromRgb(60, 60, 72);
+        }
+
+        public static Color GetDerivedBackgroundColor(Color foreground)
+        {
+            double r = foreground.R / 255.0;
+            double g = foreground.G / 255.0;
+            double b = foreground.B / 255.0;
+
+            double max = System.Math.Max(r, System.Math.Max(g, b));
+            double min = System.Math.Min(r, System.Math.Min(g, b));
+            double l = (max + min) / 2.0;
+
+            if (max == min)
+            {
+                byte gray = (byte)(0.15 * 255);
+                return Color.FromRgb(gray, gray, gray);
+            }
+
+            double s = l <= 0.5
+                ? (max - min) / (max + min)
+                : (max - min) / (2.0 - max - min);
+
+            double h;
+            if (r >= g && r >= b)
+                h = (g - b) / (max - min);
+            else if (g >= r && g >= b)
+                h = 2.0 + (b - r) / (max - min);
+            else
+                h = 4.0 + (r - g) / (max - min);
+
+            h *= 60;
+            if (h < 0) h += 360;
+
+            double newL = 0.12;
+            double newS = System.Math.Min(1.0, s * 1.4);
+
+            double q = newL < 0.5 ? newL * (1 + newS) : newL + newS - newL * newS;
+            double p = 2 * newL - q;
+
+            byte R = (byte)(HueToRgb(p, q, h / 360.0 + 1.0 / 3.0) * 255);
+            byte G = (byte)(HueToRgb(p, q, h / 360.0) * 255);
+            byte B = (byte)(HueToRgb(p, q, h / 360.0 - 1.0 / 3.0) * 255);
+
+            return Color.FromRgb(R, G, B);
+        }
+
+        private static double HueToRgb(double p, double q, double t)
+        {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
+            if (t < 0.5) return q;
+            if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
+            return p;
         }
 
         public FontWeight GetFontWeight()
@@ -258,14 +437,14 @@ namespace InlayIndex.Options
         public List<Color> GetDepthColors()
         {
             var colors = new List<Color>();
-            
+
             if (!enableDepthColors || string.IsNullOrEmpty(depthColors))
             {
                 return colors;
             }
-            
+
             var colorStrings = depthColors.Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var colorString in colorStrings)
             {
                 var colorStr = colorString.Trim();
@@ -274,11 +453,11 @@ namespace InlayIndex.Options
                     colors.Add(color);
                 }
             }
-            
+
             // 如果没有有效的颜色，返回默认的彩虹色
             if (colors.Count == 0)
             {
-                colors.Add(Color.FromRgb(255, 0, 0));     // 红
+                colors.Add(Color.FromRgb(225, 70, 30));     // 红
                 colors.Add(Color.FromRgb(255, 128, 0));   // 橙
                 colors.Add(Color.FromRgb(255, 255, 0));   // 黄
                 colors.Add(Color.FromRgb(0, 255, 0));     // 绿
@@ -286,7 +465,7 @@ namespace InlayIndex.Options
                 colors.Add(Color.FromRgb(0, 0, 255));     // 蓝
                 colors.Add(Color.FromRgb(128, 0, 255));   // 紫
             }
-            
+
             return colors;
         }
     }
