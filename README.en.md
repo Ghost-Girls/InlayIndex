@@ -17,7 +17,7 @@ Powered by **ClangSharp** (libclang) for precise AST-level code parsing, it brin
 ## Features
 
 ### Array Index Hints
-Display `[0]:`, `[1]:`, `[N]:` labels for each element in array initializers, supporting up to 4 dimensions.
+Display `[0]:`, `[1]:`, `[N]:` labels for each element in array initializers, supporting up to 10 dimensions.
 
 ```c
 // Before: hard to tell which element is which
@@ -33,6 +33,7 @@ int matrix[2][3] = { [0][0]:1, [0][1]:2, [0][2]:3, [1][0]:4, [1][1]:5, [1][2]:6 
 | 2D | `[0][0]:` `[0][1]:` `[1][0]:` |
 | 3D | `[0][0][0]:` `[0][0][1]:` `[0][1][0]:` |
 | 4D | `[0][0][0][0]:` `[0][0][0][1]:` |
+| 5D+ | and so on, up to 10 dimensions |
 
 ### Struct Array Hints
 ```c
@@ -124,14 +125,16 @@ Navigate to **Tools** → **Options** → **InlayIndex** to customize:
 | Theme | Orange | Orange / Blue / Green / High Contrast |
 | Font Size | 11pt | Range: 5-12pt |
 | Font Weight | Bold | Normal / Medium / SemiBold / Bold |
-| Background Opacity | 15% | Range: 0-100% |
+| Background Opacity | 80% | Range: 0-100% |
 | Depth Colors | On | Rainbow color by nesting depth |
+| Auto Background Color | Off | Auto-generate dark background from foreground (HSL brightness to 12%) |
+| Custom Background Color | #101020 | Manual label background (used when Auto Background is off) |
 
 ### Display Limits
 | Option | Default | Description |
 |--------|---------|-------------|
-| Max Dimensions | 4 | Maximum array dimensions to annotate |
-| Max Elements | 1000 | Maximum elements per array |
+| Max Dimensions | 10 | Maximum array dimensions to annotate (1-10) |
+| Max Elements | 10000 | Maximum elements per array |
 
 ### Project Awareness
 | Option | Default | Description |
@@ -143,7 +146,12 @@ Navigate to **Tools** → **Options** → **InlayIndex** to customize:
 ### Performance
 | Option | Default | Description |
 |--------|---------|-------------|
-| Debounce Delay | 500ms | Delay after editing before re-parsing (100-2000ms) |
+| Debounce Delay | 200ms | Delay after editing before re-parsing (100-2000ms) |
+
+### Log Config (DEBUG only)
+| Option | Default | Description |
+|--------|---------|-------------|
+| Log Directory | | Custom log output directory (default: plugin directory) |
 
 ---
 

@@ -3,7 +3,8 @@
     <Metadata>
         <Identity Id="InlayIndex.f43670c7-9c46-4c03-acb7-4983fc829c34" Version="1.0.0" Language="en-US" Publisher="Ghost-Girls" />
         <DisplayName>InlayIndex</DisplayName>
-        <Description xml:space="preserve">InlayIndex enhances C/C++ development workflows by providing inline hints for array indices and enum values. Leveraging ClangSharp for precise code parsing, it renders index annotations such as [0]:, [1][0]: and enum value labels directly within the editor, greatly improving code readability and eliminating the need for manual index tracking.</Description>
+        <Description xml:space="preserve">InlayIndex is a Visual Studio 2022/2026 extension that enhances C/C++ code readability by providing inline hints for array indices, enum values, and struct field names directly within the editor.
+Powered by ClangSharp (libclang) for precise AST-level code parsing, it brings a code-reading experience comparable to CLion's inlay hints to Visual Studio.</Description>
         <Icon>Logo\IconLogo.png</Icon>
         <PreviewImage>Logo\IconLogoPreview.png</PreviewImage>
         <Tags>C++, C, InlayHints, Array, Enum, CodeReader, Productivity, InlineHints</Tags>
