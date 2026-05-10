@@ -11,6 +11,7 @@ namespace InlayIndex.Options
     {
         private static InlayIndexOptionsPage _defaultInstance;
         private InlayIndexOptionsPageControl _pageControl;
+        private System.Windows.Forms.Integration.ElementHost _elementHost;
 
         public static event EventHandler<InlayIndexOptionsPage> SettingsApplied;
         private static event EventHandler<InlayIndexOptionsPage> PackageInitialized;
@@ -39,7 +40,11 @@ namespace InlayIndex.Options
                     _pageControl = new InlayIndexOptionsPageControl();
                     _pageControl.OptionsPage = this;
                 }
-                return new System.Windows.Forms.Integration.ElementHost { Child = _pageControl };
+                if (_elementHost == null)
+                {
+                    _elementHost = new System.Windows.Forms.Integration.ElementHost { Child = _pageControl };
+                }
+                return _elementHost;
             }
         }
 
@@ -95,7 +100,9 @@ namespace InlayIndex.Options
             def.maxElements = source.maxElements;
             def.enableC = source.enableC;
             def.enableCpp = source.enableCpp;
+#if DEBUG
             def.logDirectory = source.logDirectory;
+#endif
             def.indexDisplayMode = source.indexDisplayMode;
             def.enableDepthColors = source.enableDepthColors;
             def.depthColors = source.depthColors;
@@ -114,11 +121,13 @@ namespace InlayIndex.Options
         private FontWeight fontWeight = FontWeights.Bold;
         private double backgroundOpacity = 80;
         private string backgroundColorHex = "#101020";
-        private int maxDimensions = 4;
+        private int maxDimensions = 10;
         private int maxElements = 10000;
         private bool enableC = true;
         private bool enableCpp = true;
+#if DEBUG
         private string logDirectory = @"C:\Users\NexusStudio\source\repos\InlayIndex\InlayIndex\Log";
+#endif
         private IndexDisplayMode indexDisplayMode = IndexDisplayMode.Simple;
         private bool enableDepthColors = true;
         private string depthColors = "#E1461E,#FF8000,#FFFF00,#00FF00,#00FFFF,#0000FF,#8000FF";
@@ -201,12 +210,12 @@ namespace InlayIndex.Options
 
         [Category("显示限制")]
         [DisplayName("最大显示维度")]
-        [Description("显示数组的最大维度 (1-4)")]
-        [DefaultValue(4)]
+        [Description("显示数组的最大维度 (1-10)")]
+        [DefaultValue(10)]
         public int MaxDimensions
         {
             get => maxDimensions;
-            set => maxDimensions = System.Math.Max(1, System.Math.Min(4, value));
+            set => maxDimensions = System.Math.Max(1, System.Math.Min(10, value));
         }
 
         [Category("显示限制")]
@@ -239,6 +248,7 @@ namespace InlayIndex.Options
             set => enableCpp = value;
         }
 
+#if DEBUG
         [Category("日志配置")]
         [DisplayName("日志目录")]
         [Description("日志文件的存储目录")]
@@ -247,6 +257,7 @@ namespace InlayIndex.Options
             get => logDirectory;
             set => logDirectory = value;
         }
+#endif
 
         [Category("显示设置")]
         [DisplayName("索引显示模式")]

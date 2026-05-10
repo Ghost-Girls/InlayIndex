@@ -44,15 +44,17 @@ namespace InlayIndex
             Options.SettingsStore.LoadInto(_optionsPage);
             Options.InlayIndexOptionsPage.SyncFrom(_optionsPage);
 
-            // 设置日志目录
+#if DEBUG
             if (!string.IsNullOrEmpty(_optionsPage.LogDirectory))
             {
                 Utils.LogHelper.SetLogDirectory(_optionsPage.LogDirectory);
             }
+#endif
 
-            // 日志系统已经通过静态构造函数自动初始化
             Utils.LogHelper.WriteLog("=== InlayIndexPackage 初始化完成 ===");
+#if DEBUG
             Utils.LogHelper.WriteLog($"日志目录：{_optionsPage.LogDirectory}");
+#endif
             Utils.LogHelper.WriteLog($"防抖延迟：{_optionsPage.DebounceDelayMs}ms");
 
             Options.InlayIndexOptionsPage.FirePackageInitialized(_optionsPage);

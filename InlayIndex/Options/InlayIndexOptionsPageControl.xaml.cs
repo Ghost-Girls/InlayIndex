@@ -53,9 +53,14 @@ namespace InlayIndex.Options
             chkEnableVcxproj.IsChecked = OptionsPage.EnableVcxprojDetection;
             chkEnableCmake.IsChecked = OptionsPage.EnableCmakeDetection;
 
+#if DEBUG
             txtLogDir.Text = OptionsPage.LogDirectory ?? "";
+#endif
 
             sldDebounce.Value = OptionsPage.DebounceDelayMs;
+#if !DEBUG
+            grpLogConfig.Visibility = Visibility.Collapsed;
+#endif
         }
 
         internal void SaveToPage()
@@ -101,7 +106,9 @@ namespace InlayIndex.Options
             OptionsPage.EnableVcxprojDetection = chkEnableVcxproj.IsChecked ?? true;
             OptionsPage.EnableCmakeDetection = chkEnableCmake.IsChecked ?? false;
 
+#if DEBUG
             OptionsPage.LogDirectory = txtLogDir.Text ?? "";
+#endif
 
             OptionsPage.DebounceDelayMs = (int)sldDebounce.Value;
             OptionsPage.UseAutoBackgroundColor = chkAutoBgColor.IsChecked ?? false;
@@ -144,7 +151,9 @@ namespace InlayIndex.Options
             chkEnableVcxproj.IsChecked = defaults.EnableVcxprojDetection;
             chkEnableCmake.IsChecked = defaults.EnableCmakeDetection;
 
+#if DEBUG
             txtLogDir.Text = defaults.LogDirectory;
+#endif
 
             sldDebounce.Value = defaults.DebounceDelayMs;
 

@@ -86,7 +86,7 @@
 
           <TextBlock Text="最大显示维度：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
           <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" Margin="0,4">
-            <Slider x:Name="sldMaxDims" Minimum="1" Maximum="4" TickFrequency="1" Width="200" IsSnapToTickEnabled="True"/>
+            <Slider x:Name="sldMaxDims" Minimum="1" Maximum="10" TickFrequency="1" Width="200" IsSnapToTickEnabled="True"/>
             <TextBlock Text="{Binding Value, ElementName=sldMaxDims}" VerticalAlignment="Center" Margin="8,0,0,0"/>
           </StackPanel>
 
@@ -138,7 +138,7 @@
         </StackPanel>
       </GroupBox>
 
-      <GroupBox Header="日志配置" Margin="0,0,0,8">
+      <GroupBox x:Name="grpLogConfig" Header="日志配置" Margin="0,0,0,8">
         <Grid Margin="4">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

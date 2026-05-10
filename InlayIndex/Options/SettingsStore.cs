@@ -34,7 +34,9 @@ namespace InlayIndex.Options
                 json.AppendLine($"  \"maxElements\": {page.MaxElements},");
                 json.AppendLine($"  \"enableC\": {page.EnableC.ToString().ToLowerInvariant()},");
                 json.AppendLine($"  \"enableCpp\": {page.EnableCpp.ToString().ToLowerInvariant()},");
+#if DEBUG
                 json.AppendLine($"  \"logDirectory\": \"{EscapeJson(page.LogDirectory)}\",");
+#endif
                 json.AppendLine($"  \"indexDisplayMode\": \"{page.IndexDisplayMode}\",");
                 json.AppendLine($"  \"enableDepthColors\": {page.EnableDepthColors.ToString().ToLowerInvariant()},");
                 json.AppendLine($"  \"depthColors\": \"{EscapeJson(page.DepthColors)}\",");
@@ -81,7 +83,9 @@ namespace InlayIndex.Options
                 TryGetInt(json, "maxElements", out var i2); if (i2.HasValue) page.MaxElements = i2.Value;
                 TryGetBool(json, "enableC", out var v4); if (v4.HasValue) page.EnableC = v4.Value;
                 TryGetBool(json, "enableCpp", out var v5); if (v5.HasValue) page.EnableCpp = v5.Value;
+#if DEBUG
                 TryGetString(json, "logDirectory", out var s4); if (s4 != null) page.LogDirectory = s4;
+#endif
                 TryGetString(json, "indexDisplayMode", out var s5);
                 if (s5 != null && Enum.TryParse<IndexDisplayMode>(s5, out var m)) page.IndexDisplayMode = m;
                 TryGetBool(json, "enableDepthColors", out var v6); if (v6.HasValue) page.EnableDepthColors = v6.Value;
