@@ -135,7 +135,7 @@ namespace InlayIndex.Adornment
                 FontSize = hintTag.FontSize,
                 FontWeight = hintTag.FontWeight,
                 Foreground = new SolidColorBrush(hintTag.ForegroundColor.Value),
-                Padding = new Thickness(2, 1.25, 2, 2.75),
+                Padding = new Thickness(2, 1.3, 2, 2.7),
                 TextAlignment = TextAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -145,7 +145,7 @@ namespace InlayIndex.Adornment
                 Child = textBlock,
                 Background = CreateBackgroundBrush(hintTag),
                 CornerRadius = new CornerRadius(2),
-                Margin = new Thickness(1, 1.5, 1, 2.5)
+                Margin = new Thickness(1, 1.6, 1, 2.5)
             };
 
             return border;
