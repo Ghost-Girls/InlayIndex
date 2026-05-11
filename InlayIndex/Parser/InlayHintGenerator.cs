@@ -408,6 +408,7 @@ namespace InlayIndex.Parser
         private List<InlayHintTag> GenerateStructFieldTags(List<StructInfo> structs, Microsoft.VisualStudio.Text.ITextSnapshot snapshot = null)
         {
             var tags = new List<InlayHintTag>();
+            var seenPositions = new HashSet<int>();
             LogHelper.WriteDebug($"处理 {structs.Count} 个结构体");
 
             foreach (var structInfo in structs)
@@ -423,6 +424,12 @@ namespace InlayIndex.Parser
                     }
                     else
                     {
+                        if (!seenPositions.Add(field.StartPosition))
+                        {
+                            LogHelper.WriteDebug($"跳过重复字段标签：{field.Name} 位置：{field.StartPosition}");
+                            continue;
+                        }
+
                         var tag = new InlayHintTag
                         {
                             Text = $".{field.Name}:",

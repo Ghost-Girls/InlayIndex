@@ -579,6 +579,14 @@ namespace InlayIndex.Parser
             var structInfo = ExtractStructInfo(cursor, snapshot);
             if (structInfo != null)
             {
+                foreach (var existing in result.Structs)
+                {
+                    if (existing.Name == structInfo.Name)
+                    {
+                        LogHelper.WriteDebug($"跳过重复结构体：{structInfo.Name}");
+                        return;
+                    }
+                }
                 result.Structs.Add(structInfo);
                 LogHelper.WriteParseInfo($"提取结构体：{structInfo.Name}, 字段数：{structInfo.Fields.Count}");
             }
@@ -1188,15 +1196,29 @@ namespace InlayIndex.Parser
                         var currentStructInfo = s.Value;
                         if (child.Kind == CXCursorKind.CXCursor_FieldDecl)
                         {
+                            var fieldStartPos = (int)GetOffset(child.Location);
+                            var fieldName = child.ToString();
+
+                            int fieldNamePos = fieldStartPos;
+                            if (!string.IsNullOrEmpty(_currentCode) && fieldStartPos >= 0 && fieldStartPos < _currentCode.Length)
+                            {
+                                int searchLimit = Math.Min(_currentCode.Length, fieldStartPos + 200);
+                                int nameIdx = _currentCode.IndexOf(fieldName, fieldStartPos, searchLimit - fieldStartPos, StringComparison.Ordinal);
+                                if (nameIdx >= 0)
+                                {
+                                    fieldNamePos = nameIdx;
+                                }
+                            }
+
                             var field = new StructFieldInfo
                             {
-                                Name = child.ToString(),
+                                Name = fieldName,
                                 TypeName = child.Type.kind.ToString(), // 先暂时用 type.kind，避免调用 type.Declaration
                                 IsArray = child.Type.kind == CXTypeKind.CXType_ConstantArray,
-                                StartPosition = (int)GetOffset(child.Location),
-                                EndPosition = (int)GetOffset(child.Location),
+                                StartPosition = fieldNamePos,
+                                EndPosition = fieldNamePos,
                                 TrackingSpan = snapshot?.CreateTrackingSpan(
-                                    new Microsoft.VisualStudio.Text.Span((int)GetOffset(child.Location), 0),
+                                    new Microsoft.VisualStudio.Text.Span(fieldNamePos, 0),
                                     SpanTrackingMode.EdgeExclusive
                                 )
                             };
