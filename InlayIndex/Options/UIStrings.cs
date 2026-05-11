@@ -36,7 +36,7 @@ namespace InlayIndex.Options
         public static string GroupDisplayPerformance => T("显示设置 & 性能", "Display & Performance");
         public static string GroupProjectAwareness => T("工程感知", "Project Awareness");
         public static string GroupLogConfig => T("日志配置", "Log Config");
-        public static string GroupUILanguage => T("界面语言", "UI Language");
+        public static string GroupUILanguage => T("界面语言(UILanguage)", "UI Language");
 
         // === CheckBox 内容 ===
         public static string ChkArrayIndex => T("启用数组索引标签", "Enable Array Index Hints");
@@ -77,7 +77,7 @@ namespace InlayIndex.Options
         public static string LabelIndexMode => T("索引显示模式：", "Index Mode:");
         public static string LabelDebounce => T("防抖延迟 (ms)：", "Debounce Delay (ms):");
         public static string LabelLogDir => T("日志目录：", "Log Directory:");
-        public static string LabelUILanguage => T("界面语言：", "UI Language:");
+        public static string LabelUILanguage => T("界面语言(UILanguage)：", "UI Language:");
 
         // === 按钮 ===
         public static string BtnReset => T("恢复默认设置", "Reset to Defaults");
