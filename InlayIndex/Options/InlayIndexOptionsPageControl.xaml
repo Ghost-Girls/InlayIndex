@@ -7,6 +7,21 @@
     <StackPanel>
       <TextBlock x:Name="lblPageTitle" FontSize="18" FontWeight="Bold" Margin="0,0,0,14"/>
 
+      <GroupBox x:Name="grpUILanguage" Header="界面语言" Margin="0,0,0,8">
+        <Grid Margin="4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock x:Name="lblUILanguage" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="cmbUILanguage" Grid.Column="1" Margin="0,4" SelectionChanged="cmbUILanguage_SelectionChanged">
+            <ComboBoxItem Tag="Chinese"/>
+            <ComboBoxItem Tag="English"/>
+          </ComboBox>
+        </Grid>
+      </GroupBox>
+
       <GroupBox x:Name="grpFeatureToggles" Margin="0,0,0,8">
         <StackPanel>
           <CheckBox x:Name="chkEnableArrayIndex" Margin="4"/>
@@ -18,7 +33,6 @@
       <GroupBox x:Name="grpStyle" Margin="0,0,0,8">
         <Grid Margin="4">
           <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -71,12 +85,6 @@
 
           <TextBlock x:Name="lblDepthColors" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
           <TextBox x:Name="txtDepthColors" Grid.Row="6" Grid.Column="1" Margin="0,4" PreviewKeyDown="HexTextBox_PreviewKeyDown"/>
-
-          <TextBlock x:Name="lblUILanguage" Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-          <ComboBox x:Name="cmbUILanguage" Grid.Row="7" Grid.Column="1" Margin="0,4" SelectionChanged="cmbUILanguage_SelectionChanged">
-            <ComboBoxItem Tag="Chinese"/>
-            <ComboBoxItem Tag="English"/>
-          </ComboBox>
         </Grid>
       </GroupBox>
 

@@ -25,6 +25,11 @@ namespace InlayIndex.Options
         {
             lblPageTitle.Text = UIStrings.PageTitle;
 
+            grpUILanguage.Header = UIStrings.GroupUILanguage;
+            lblUILanguage.Text = UIStrings.LabelUILanguage;
+            SetComboItemText(cmbUILanguage, "Chinese", UIStrings.LanguageChinese);
+            SetComboItemText(cmbUILanguage, "English", UIStrings.LanguageEnglish);
+
             grpFeatureToggles.Header = UIStrings.GroupFeatureToggles;
             chkEnableArrayIndex.Content = UIStrings.ChkArrayIndex;
             chkEnableEnumValue.Content = UIStrings.ChkEnumValue;
@@ -50,10 +55,6 @@ namespace InlayIndex.Options
             lblDepthColorsEnable.Text = UIStrings.LabelDepthColorsEnable;
             chkEnableDepthColors.Content = UIStrings.ChkDepthColors;
             lblDepthColors.Text = UIStrings.LabelDepthColors;
-
-            lblUILanguage.Text = UIStrings.LabelUILanguage;
-            SetComboItemText(cmbUILanguage, "Chinese", UIStrings.LanguageChinese);
-            SetComboItemText(cmbUILanguage, "English", UIStrings.LanguageEnglish);
 
             grpDisplayLimits.Header = UIStrings.GroupDisplayLimits;
             lblMaxDims.Text = UIStrings.LabelMaxDimensions;
