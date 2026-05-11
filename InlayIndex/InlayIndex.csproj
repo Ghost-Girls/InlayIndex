@@ -61,6 +61,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Options\SettingsStore.cs" />
+    <Compile Include="Options\UIStrings.cs" />
     <Page Include="Options\InlayIndexOptionsPageControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

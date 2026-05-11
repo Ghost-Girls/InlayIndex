@@ -44,7 +44,8 @@ namespace InlayIndex.Options
                 json.AppendLine($"  \"enableVcxprojDetection\": {page.EnableVcxprojDetection.ToString().ToLowerInvariant()},");
                 json.AppendLine($"  \"enableCmakeDetection\": {page.EnableCmakeDetection.ToString().ToLowerInvariant()},");
                 json.AppendLine($"  \"debounceDelayMs\": {page.DebounceDelayMs},");
-                json.AppendLine($"  \"useAutoBackgroundColor\": {page.UseAutoBackgroundColor.ToString().ToLowerInvariant()}");
+                json.AppendLine($"  \"useAutoBackgroundColor\": {page.UseAutoBackgroundColor.ToString().ToLowerInvariant()},");
+                json.AppendLine($"  \"uiLanguage\": \"{page.UILanguageSetting}\"");
                 json.AppendLine("}");
 
                 File.WriteAllText(SettingsFilePath, json.ToString(), Encoding.UTF8);
@@ -95,6 +96,9 @@ namespace InlayIndex.Options
                 TryGetBool(json, "enableCmakeDetection", out var v9); if (v9.HasValue) page.EnableCmakeDetection = v9.Value;
                 TryGetInt(json, "debounceDelayMs", out var i3); if (i3.HasValue) page.DebounceDelayMs = i3.Value;
                 TryGetBool(json, "useAutoBackgroundColor", out var v10); if (v10.HasValue) page.UseAutoBackgroundColor = v10.Value;
+
+                TryGetString(json, "uiLanguage", out var sLang);
+                if (sLang != null && System.Enum.TryParse<UILanguage>(sLang, out var lang)) page.UILanguageSetting = lang;
 
                 return true;
             }

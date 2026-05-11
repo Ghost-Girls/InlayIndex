@@ -13,12 +13,92 @@ namespace InlayIndex.Options
         public InlayIndexOptionsPageControl()
         {
             InitializeComponent();
+            UIStrings.LanguageChanged += OnLanguageChanged;
+        }
+
+        private void OnLanguageChanged(object sender, System.EventArgs e)
+        {
+            Dispatcher.Invoke(() => ApplyUIStrings());
+        }
+
+        private void ApplyUIStrings()
+        {
+            lblPageTitle.Text = UIStrings.PageTitle;
+
+            grpFeatureToggles.Header = UIStrings.GroupFeatureToggles;
+            chkEnableArrayIndex.Content = UIStrings.ChkArrayIndex;
+            chkEnableEnumValue.Content = UIStrings.ChkEnumValue;
+            chkEnableStructField.Content = UIStrings.ChkStructField;
+
+            grpStyle.Header = UIStrings.GroupStyle;
+            lblTheme.Text = UIStrings.LabelTheme;
+            SetComboItemText(cmbTheme, "Orange", UIStrings.ThemeOrange);
+            SetComboItemText(cmbTheme, "Blue", UIStrings.ThemeBlue);
+            SetComboItemText(cmbTheme, "Green", UIStrings.ThemeGreen);
+            SetComboItemText(cmbTheme, "HighContrast", UIStrings.ThemeHighContrast);
+
+            lblFontSize.Text = UIStrings.LabelFontSize;
+            lblFontWeight.Text = UIStrings.LabelFontWeight;
+            SetComboItemText(cmbFontWeight, "Normal", UIStrings.FontWeightNormal);
+            SetComboItemText(cmbFontWeight, "Medium", UIStrings.FontWeightMedium);
+            SetComboItemText(cmbFontWeight, "SemiBold", UIStrings.FontWeightSemiBold);
+            SetComboItemText(cmbFontWeight, "Bold", UIStrings.FontWeightBold);
+
+            lblBgOpacity.Text = UIStrings.LabelBgOpacity;
+            lblBgColor.Text = UIStrings.LabelBgColor;
+            chkAutoBgColor.Content = UIStrings.ChkAutoBgColor;
+            lblDepthColorsEnable.Text = UIStrings.LabelDepthColorsEnable;
+            chkEnableDepthColors.Content = UIStrings.ChkDepthColors;
+            lblDepthColors.Text = UIStrings.LabelDepthColors;
+
+            lblUILanguage.Text = UIStrings.LabelUILanguage;
+            SetComboItemText(cmbUILanguage, "Chinese", UIStrings.LanguageChinese);
+            SetComboItemText(cmbUILanguage, "English", UIStrings.LanguageEnglish);
+
+            grpDisplayLimits.Header = UIStrings.GroupDisplayLimits;
+            lblMaxDims.Text = UIStrings.LabelMaxDimensions;
+            lblMaxElements.Text = UIStrings.LabelMaxElements;
+
+            grpLanguageSupport.Header = UIStrings.GroupLanguageSupport;
+            chkEnableC.Content = UIStrings.ChkEnableC;
+            chkEnableCpp.Content = UIStrings.ChkEnableCpp;
+
+            grpDisplayPerformance.Header = UIStrings.GroupDisplayPerformance;
+            lblIndexMode.Text = UIStrings.LabelIndexMode;
+            SetComboItemText(cmbIndexDisplay, "Simple", UIStrings.IndexModeSimple);
+            SetComboItemText(cmbIndexDisplay, "Full", UIStrings.IndexModeFull);
+            lblDebounce.Text = UIStrings.LabelDebounce;
+
+            grpProjectAwareness.Header = UIStrings.GroupProjectAwareness;
+            chkEnableVgdb.Content = UIStrings.ChkVisualGDB;
+            chkEnableVcxproj.Content = UIStrings.ChkVcxproj;
+            chkEnableCmake.Content = UIStrings.ChkCmake;
+
+            grpLogConfig.Header = UIStrings.GroupLogConfig;
+            lblLogDir.Text = UIStrings.LabelLogDir;
+
+            btnReset.Content = UIStrings.BtnReset;
+        }
+
+        private static void SetComboItemText(ComboBox combo, string tag, string text)
+        {
+            foreach (ComboBoxItem item in combo.Items)
+            {
+                if (item.Tag as string == tag)
+                {
+                    item.Content = text;
+                    return;
+                }
+            }
         }
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
             if (OptionsPage == null)
                 return;
+
+            UIStrings.CurrentLanguage = OptionsPage.UILanguageSetting;
+            ApplyUIStrings();
 
             chkEnableArrayIndex.IsChecked = OptionsPage.EnableArrayIndex;
             chkEnableEnumValue.IsChecked = OptionsPage.EnableEnumValue;
@@ -61,6 +141,9 @@ namespace InlayIndex.Options
 #if !DEBUG
             grpLogConfig.Visibility = Visibility.Collapsed;
 #endif
+
+            var langItem = FindItemByTag(cmbUILanguage, UIStrings.CurrentLanguage.ToString());
+            if (langItem != null) cmbUILanguage.SelectedItem = langItem;
         }
 
         internal void SaveToPage()
@@ -112,6 +195,20 @@ namespace InlayIndex.Options
 
             OptionsPage.DebounceDelayMs = (int)sldDebounce.Value;
             OptionsPage.UseAutoBackgroundColor = chkAutoBgColor.IsChecked ?? false;
+
+            var selLang = cmbUILanguage.SelectedItem as ComboBoxItem;
+            if (selLang != null && System.Enum.TryParse<UILanguage>(selLang.Tag as string, out var lang))
+                OptionsPage.UILanguageSetting = lang;
+        }
+
+        private void cmbUILanguage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            var selLang = cmbUILanguage.SelectedItem as ComboBoxItem;
+            if (selLang != null && System.Enum.TryParse<UILanguage>(selLang.Tag as string, out var lang))
+            {
+                UIStrings.SwitchLanguage(lang);
+            }
         }
 
         private void btnReset_Click(object sender, RoutedEventArgs e)
@@ -157,7 +254,10 @@ namespace InlayIndex.Options
 
             sldDebounce.Value = defaults.DebounceDelayMs;
 
-            txtStatus.Text = "已恢复默认设置，请点击「确定」应用更改";
+            var langItem = FindItemByTag(cmbUILanguage, defaults.UILanguageSetting.ToString());
+            if (langItem != null) cmbUILanguage.SelectedItem = langItem;
+
+            txtStatus.Text = UIStrings.StatusResetDone;
         }
 
         private void chkAutoBgColor_Changed(object sender, RoutedEventArgs e)

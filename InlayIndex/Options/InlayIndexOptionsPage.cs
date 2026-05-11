@@ -76,6 +76,7 @@ namespace InlayIndex.Options
         {
             base.LoadSettingsFromStorage();
             SettingsStore.LoadInto(this);
+            UIStrings.SwitchLanguage(this.UILanguageSetting);
         }
 
         public override void SaveSettingsToStorage()
@@ -111,6 +112,8 @@ namespace InlayIndex.Options
             def.enableCmakeDetection = source.enableCmakeDetection;
             def.debounceDelayMs = source.debounceDelayMs;
             def.useAutoBackgroundColor = source.useAutoBackgroundColor;
+            def.uiLanguage = source.uiLanguage;
+            UIStrings.SwitchLanguage(def.uiLanguage);
         }
 
         private bool enableArrayIndex = true;
@@ -136,6 +139,7 @@ namespace InlayIndex.Options
         private bool enableCmakeDetection = false;
         private int debounceDelayMs = 200;
         private bool useAutoBackgroundColor = false;
+        private UILanguage uiLanguage = UILanguage.Chinese;
 
         [Category("功能开关")]
         [DisplayName("启用数组索引标签")]
@@ -337,6 +341,16 @@ namespace InlayIndex.Options
         {
             get => useAutoBackgroundColor;
             set => useAutoBackgroundColor = value;
+        }
+
+        [Category("界面语言")]
+        [DisplayName("界面语言")]
+        [Description("选择选项页面的显示语言")]
+        [DefaultValue(UILanguage.Chinese)]
+        public UILanguage UILanguageSetting
+        {
+            get => uiLanguage;
+            set => uiLanguage = value;
         }
 
         public Color GetForegroundColor()
