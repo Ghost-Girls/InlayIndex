@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="InlayIndex.3BE20F73-9FD3-4B80-8964-155296F77016" Version="1.1.0" Language="en-US" Publisher="Ghost-Girls" />
+        <Identity Id="InlayIndex.3BE20F73-9FD3-4B80-8964-155296F77016" Version="1.2.0" Language="en-US" Publisher="Ghost-Girls" />
         <DisplayName>InlayIndex</DisplayName>
         <Description xml:space="preserve">InlayIndex is a Visual Studio 2022/2026 extension that enhances C/C++ code readability by providing inline hints for array indices, enum values, and struct field names directly within the editor.
 Powered by ClangSharp (libclang) for precise AST-level code parsing, it brings a code-reading experience comparable to CLion's inlay hints to Visual Studio.</Description>
