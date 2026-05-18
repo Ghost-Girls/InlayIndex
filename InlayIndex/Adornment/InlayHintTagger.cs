@@ -14,6 +14,7 @@ using System.Windows.Media;
 namespace InlayIndex.Adornment
 {
     [Export(typeof(IViewTaggerProvider))]
+    [ContentType("text")]
     [ContentType("C/C++")]
     [TextViewRole(PredefinedTextViewRoles.PrimaryDocument)]
     [TagType(typeof(IntraTextAdornmentTag))]
@@ -26,6 +27,8 @@ namespace InlayIndex.Adornment
 
             if (typeof(T) == typeof(IntraTextAdornmentTag))
             {
+                var contentType = buffer.ContentType?.TypeName ?? "null";
+                LogHelper.WriteDebug($"[Tagger-B] CreateTagger 被调用，ContentType：{contentType}");
                 return (ITagger<T>)(object)new InlayHintTagger(textView, buffer);
             }
             return null;

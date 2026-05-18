@@ -9,22 +9,36 @@ using Microsoft.VisualStudio.Utilities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 
 namespace InlayIndex.Adornment
 {
     [Export(typeof(IWpfTextViewCreationListener))]
+    [ContentType("text")]
     [ContentType("C/C++")]
     [TextViewRole(PredefinedTextViewRoles.PrimaryDocument)]
     public class InlayIndexViewCreationListener : IWpfTextViewCreationListener
     {
+        private static readonly HashSet<string> CppExtensions = new HashSet<string>(
+            new[] { ".c", ".cpp", ".cxx", ".cc", ".c++", ".h", ".hpp", ".hxx", ".hh", ".h++", ".inl", ".ipp" },
+            StringComparer.OrdinalIgnoreCase);
+
         [Import]
         internal SVsServiceProvider ServiceProvider { get; set; }
 
         public void TextViewCreated(IWpfTextView textView)
         {
-            LogHelper.WriteViewInfo($"视图创建 - 文件：{GetFilePath(textView)}");
+            var filePath = GetFilePath(textView);
+            var contentType = textView.TextBuffer.ContentType?.TypeName ?? "null";
+            LogHelper.WriteViewInfo($"视图创建 - 文件：{filePath}，ContentType：{contentType}");
+
+            if (!IsCppFile(filePath))
+            {
+                LogHelper.WriteDebug($"[视图] 跳过非C/C++文件：{filePath}");
+                return;
+            }
 
             textView.TextBuffer.Properties.GetOrCreateSingletonProperty(
                 typeof(InlayHintManager),
@@ -33,6 +47,14 @@ namespace InlayIndex.Adornment
             textView.VisualElement.Dispatcher.BeginInvoke(
                 DispatcherPriority.Loaded,
                 new Action(() => InitializeHints(textView)));
+        }
+
+        private static bool IsCppFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || filePath == "未知")
+                return false;
+            var ext = Path.GetExtension(filePath);
+            return CppExtensions.Contains(ext);
         }
 
         private void InitializeHints(IWpfTextView textView)
